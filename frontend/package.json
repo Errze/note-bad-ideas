@@ -7,7 +7,10 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "electron . --disable-gpu-sandbox",
     "react-start": "cd renderer && npm start",
-    "build": "cd renderer && npm run build"
+    "build": "cd renderer && npm run build",
+    "dev": "concurrently \"npm run start-backend\" \"npm run start-electron\"",
+    "start-backend": "cd ../backend && npm start",
+    "start-electron": "npm run build && electron . --disable-gpu-sandbox"
   },
   "keywords": [],
   "author": "",
