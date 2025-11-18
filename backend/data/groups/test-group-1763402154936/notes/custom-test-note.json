@@ -1,0 +1,20 @@
+{
+  "id": "custom-test-note",
+  "title": "Заметка с кастомным ID",
+  "content": "Эта заметка имеет заданный вручную ID.",
+  "type": "markdown",
+  "tags": [
+    "кастомный-id"
+  ],
+  "metadata": {
+    "isPinned": false,
+    "isArchived": false,
+    "color": "#3b82f6",
+    "wordCount": 6,
+    "readingTime": 1,
+    "linkedNotes": [],
+    "groupId": "test-group-1763402154936"
+  },
+  "createdAt": "2025-11-17T17:55:54.967Z",
+  "updatedAt": "2025-11-17T17:55:54.967Z"
+}

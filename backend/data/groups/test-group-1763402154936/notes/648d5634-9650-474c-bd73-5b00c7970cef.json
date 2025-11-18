@@ -1,0 +1,21 @@
+{
+  "id": "648d5634-9650-474c-bd73-5b00c7970cef",
+  "title": "Вторая заметка",
+  "content": "Содержимое второй заметки. Она должна быть более новой после обновления.",
+  "type": "markdown",
+  "tags": [
+    "тест",
+    "вторая"
+  ],
+  "metadata": {
+    "isPinned": false,
+    "isArchived": false,
+    "color": "#3b82f6",
+    "wordCount": 10,
+    "readingTime": 1,
+    "linkedNotes": [],
+    "groupId": "test-group-1763402154936"
+  },
+  "createdAt": "2025-11-17T17:55:54.945Z",
+  "updatedAt": "2025-11-17T17:55:54.945Z"
+}
