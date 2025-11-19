@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import logo from './button.jpg';
 import './App.css';
+import WorkNotePage from "./WorkNotePage";
 
 function App() {
   const [message, setMessage] = useState(null);
+  const [page, setPage] = useState('main'); // состояние текущей страницы
 
   useEffect(() => {
     fetch("http://localhost:3001/api/hello")
@@ -15,6 +17,10 @@ function App() {
       });
   }, []);
 
+  if (page === 'workNote') {
+    return <WorkNotePage onBack={() => setPage('main')} />; // Возврат на главную страницу
+  }
+
   return (
     <div className="App">
       <header className="App-header">
@@ -25,7 +31,7 @@ function App() {
           <p>{message}</p>
         </p>
         <div className="button-row">
-          <button className="left-button">Создать</button>
+          <button className="left-button" onClick={() => setPage('workNote')}>Создать</button>
           <button className="right-button">Открыть</button>
         </div>
         <a
