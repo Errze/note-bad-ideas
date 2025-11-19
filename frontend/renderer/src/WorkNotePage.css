@@ -12,31 +12,91 @@
   box-sizing: border-box;
 }
 
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+}
+
+.sidebar li {
+  padding: 8px 12px;
+  margin-bottom: 5px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.sidebar li:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
 .search {
-    position: relative;
-    top: 20px; 
-    width: 80%;
-    height: 40px;
-    left: 5px;
+  position: relative;
+  top: 20px; 
+  width: 80%;
+  height: 40px;
+  left: 5px;
 }
 
 .workarea {
-    display: flex;
-    flex: 1 1 auto;
-    height: 100%;
-    overflow: hidden;
-    border: 1px solid gray;
-    border-radius: 8px;
-    align-items: stretch;
-    box-sizing: border-box;
-    background-color: #595789;
+  display: flex;
+  flex: 1 1 auto;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid gray;
+  border-radius: 8px;
+  align-items: stretch;
+  box-sizing: border-box;
+  background-color: #595789;
 }
 
 .divider {
-    width: 2px;            
-    background-color: #595789;
-    margin: 0 10px;        
-    flex-shrink: 0; 
+  width: 2px;            
+  background-color: #595789;
+  margin: 0 10px;        
+  flex-shrink: 0; 
+}
+
+/* Стили для кнопок */
+button {
+  transition: background-color 0.2s;
+}
+
+button:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+/* Стили для предпросмотра Markdown */
+.markdown-preview h1, .markdown-preview h2, .markdown-preview h3 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.markdown-preview p {
+  margin-bottom: 1em;
+  line-height: 1.6;
+}
+
+.markdown-preview code {
+  background-color: #f4f4f4;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+}
+
+.markdown-preview pre {
+  background-color: #f8f8f8;
+  padding: 1em;
+  border-radius: 5px;
+  overflow-x: auto;
+}
+
+.markdown-preview blockquote {
+  border-left: 4px solid #ddd;
+  padding-left: 1em;
+  margin-left: 0;
+  color: #666;
 }
 
 /* .textarea {
