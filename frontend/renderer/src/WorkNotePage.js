@@ -167,8 +167,13 @@ const loadExistingNotes = async (groupId) => {
 
 // Компонент бокового меню
 function Sidebar({ files, onFileSelect, onNewNote, onDeleteNote, currentFile }) {
+  const [searchTerm, setSearchTerm] = useState('');
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, noteId: null, noteName: '' });
   
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
   const handleContextMenu = (e, noteId, noteName) => {
     e.preventDefault();
     setContextMenu({
@@ -187,6 +192,10 @@ function Sidebar({ files, onFileSelect, onNewNote, onDeleteNote, currentFile }) 
     setContextMenu({ visible: false, x: 0, y: 0, noteId: null, noteName: '' });
   };
 
+  const filteredFiles = files.filter(file =>
+    file.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   // Закрываем контекстное меню при клике вне его
   useEffect(() => {
     const handleClick = () => {
@@ -199,8 +208,22 @@ function Sidebar({ files, onFileSelect, onNewNote, onDeleteNote, currentFile }) 
 
   return (
     <div className="sidebar">
-      {/* Кнопка создания заметки вверху */}
-      <div style={{ marginBottom: '25px' }}>
+      <div className="search">
+        <input
+          type="text"
+          placeholder="Поиск..."
+          value={searchTerm}
+          onChange={handleSearchChange}
+          style={{ 
+            marginBottom: '10px',
+            padding: '8px', 
+            boxSizing: 'border-box',
+            width: '100%'
+          }}
+        />
+      </div>
+      
+      <div style={{ marginBottom: '50px' }}>
         <button 
           onClick={onNewNote}
           style={{
@@ -220,8 +243,7 @@ function Sidebar({ files, onFileSelect, onNewNote, onDeleteNote, currentFile }) 
         </button>
       </div>
       
-      {/* Список заметок */}
-      <div>
+      <div style={{ marginTop: '15px' }}>
         <div style={{ 
           color: 'rgb(134, 176, 179)', 
           fontSize: '12px', 
@@ -229,10 +251,10 @@ function Sidebar({ files, onFileSelect, onNewNote, onDeleteNote, currentFile }) 
           padding: '0 5px',
           fontWeight: 'bold'
         }}>
-          Заметки ({files.length})
+          Заметки ({filteredFiles.length})
         </div>
         <ul style={{ margin: 0, padding: 0 }}>
-          {files.map(file => (
+          {filteredFiles.map(file => (
             <li 
               key={file.id}
               onClick={() => onFileSelect(file.path)}
@@ -426,7 +448,7 @@ function WorkNotePage() {
 
   const handleTextChange = (e) => {
     setText(e.target.value);
-  };
+  }; // ← Закрывающая фигурная скобка была пропущена
 
   const handleSaveNote = async () => {
     if (!noteTitle.trim()) {
@@ -672,7 +694,11 @@ function WorkNotePage() {
               onChange={handleTextChange}
               placeholder="Начните писать свою заметку в формате Markdown..."
             />
-            <div className="divider"></div>
+            <div style={{ 
+              width: '1px', 
+              backgroundColor: '#ccc',
+              margin: '10px 0'
+            }}></div>
             <div style={{ 
               width: '50%', 
               height: '100%', 

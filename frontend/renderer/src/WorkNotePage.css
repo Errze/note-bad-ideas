@@ -39,6 +39,50 @@
   left: 5px;
 }
 
+.button-container {
+  margin-top: auto; /* вытягивает блок вниз, при flex-раскладке */
+  padding: 5px;
+  display: flex;
+  justify-content: space-between;
+  width: 200vw;
+  max-width: 180px;
+  gap: 80px;
+}
+
+.settings-button, .graph-button {
+  padding: 5px 5px;
+  font-size: 1em;
+  cursor: pointer;
+  border: none;
+  flex: 1;
+  align-items: center;
+  display: flex;
+  border-radius: 10px;
+  background-color: #61dafb;
+  color: #282c34;
+  transition: background-color 0.3s ease;
+}
+
+.settings-button:hover, .graph-button:hover {
+  background-color: #21a1f1; 
+}
+
+.settings-icon {
+  width: 100%;
+  height: 100%;
+  background: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.graph-icon {
+  width: 100%;
+  height: 100%;
+  background: none;
+  align-items: center;
+  justify-content: center;
+}
+
 .workarea {
   display: flex;
   flex: 1 1 auto;

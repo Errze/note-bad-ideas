@@ -4,7 +4,7 @@
   "content": "Эта заметка имеет заданный вручную ID.",
   "type": "markdown",
   "tags": [
-    "кастомный-id"
+    "saved-from-frontend"
   ],
   "metadata": {
     "isPinned": false,
@@ -13,8 +13,11 @@
     "wordCount": 6,
     "readingTime": 1,
     "linkedNotes": [],
-    "groupId": "test-group-1763402154936"
+    "groupId": "test-group-1763402154936",
+    "characterCount": 38,
+    "aiAnalysis": {},
+    "connections": []
   },
   "createdAt": "2025-11-17T17:55:54.967Z",
-  "updatedAt": "2025-11-17T17:55:54.967Z"
+  "updatedAt": "2025-11-19T15:15:30.911Z"
 }
