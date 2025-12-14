@@ -4,8 +4,7 @@
   "content": "Содержимое второй заметки. Она должна быть более новой после обновления.",
   "type": "markdown",
   "tags": [
-    "тест",
-    "вторая"
+    "saved-from-frontend"
   ],
   "metadata": {
     "isPinned": false,
@@ -14,8 +13,11 @@
     "wordCount": 10,
     "readingTime": 1,
     "linkedNotes": [],
-    "groupId": "test-group-1763402154936"
+    "groupId": "test-group-1763402154936",
+    "characterCount": 72,
+    "aiAnalysis": {},
+    "connections": []
   },
   "createdAt": "2025-11-17T17:55:54.945Z",
-  "updatedAt": "2025-11-17T17:55:54.945Z"
+  "updatedAt": "2025-12-12T12:41:50.179Z"
 }
