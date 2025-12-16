@@ -41,7 +41,7 @@ button:hover:not(:disabled) {
   flex-shrink: 0; 
 }
 
-.edit-button, .save-button, .done-button {
+.edit-button, .save-button, .done-button, .ai-button {
   background-color: #61dafb;
   color: #282c34;
   transition: background-color 0.3s ease;
@@ -69,7 +69,7 @@ button:hover:not(:disabled) {
   margin: 10px 0;
 }
 
-.editing-icon, .saving-icon, .done-icon, .new-note-icon {
+.editing-icon, .saving-icon, .done-icon, .new-note-icon, .ai-icon {
   width: 100%;
   height: 80%;
   background: none;

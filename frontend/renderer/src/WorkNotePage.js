@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react";
 import ReactMarkdown from 'react-markdown';
 import './WorkNotePage.css';
+import AIAssistant from './AIThing';
 import settings from './settings.png';
 import graph from './graph.png';
 import editing from './editing.png';
 import savesave from './saving.png';
 import update from './update.png';
 import done from './done.png';
-import newnote from './new-note.png'
+import newnote from './new-note.png';
+import ai from './ai.png';
 
 const API_BASE = 'http://localhost:3001';
 
@@ -217,6 +219,8 @@ function Sidebar({ files, onFileSelect, onNewNote, onDeleteNote, currentFile }) 
     alert('Абонент временно недоступен, пожалуйста, перезвоните позднее \nThe number is not available at the moment, please, try again later');
   };
 
+  
+
   return (
     <div className="sidebar">
       <div className="search">
@@ -336,6 +340,7 @@ function WorkNotePage() {
   const [deleting, setDeleting] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [currentNoteId, setCurrentNoteId] = useState(null);
+  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
 
   // Загрузка групп при монтировании
   useEffect(() => {
@@ -521,6 +526,14 @@ function WorkNotePage() {
     setSaveMessage('🔄 Список заметок обновлен');
   };
 
+  const handleOpenAIAssistant = () => {
+    setIsAIAssistantOpen(true);
+  };
+
+  const handleCloseAIAssistant = () => {
+    setIsAIAssistantOpen(false);
+  };
+
   return (
     <div className="worknote-container">
       <div>
@@ -555,6 +568,16 @@ function WorkNotePage() {
           </div>
 
           <div className="header-right">
+            <button 
+              onClick={{handleOpenAIAssistant}} 
+              className="ai-button"
+              title="Обратиться к ИИ"
+              style={{
+                cursor: (saving || deleting) ? 'not-allowed' : 'pointer'
+              }}>
+              <img src={ai} alt="ai" className="ai-icon" />
+            </button>
+            
             {saveMessage && (
               <span className="save-message" style={{ 
                 color: saveMessage.includes('✅') ? '#4CAF50' : 
@@ -618,6 +641,9 @@ function WorkNotePage() {
           </div>
         )}
       </div>
+      <AIAssistant 
+        isOpen={isAIAssistantOpen}
+        onClose={handleCloseAIAssistant}/>
     </div>
   );
 }
