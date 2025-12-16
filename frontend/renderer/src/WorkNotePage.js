@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from "react";
 import ReactMarkdown from 'react-markdown';
 import './WorkNotePage.css';
+import settings from './settings.png';
+import graph from './graph.png';
+import editing from './editing.png';
+import savesave from './saving.png';
+import update from './update.png';
+import done from './done.png';
+import newnote from './new-note.png'
 
 const API_BASE = 'http://localhost:3001';
 
@@ -206,6 +213,10 @@ function Sidebar({ files, onFileSelect, onNewNote, onDeleteNote, currentFile }) 
     return () => document.removeEventListener('click', handleClick);
   }, []);
 
+  const handleSettingsClick = () => {
+    alert('Абонент временно недоступен, пожалуйста, перезвоните позднее \nThe number is not available at the moment, please, try again later');
+  };
+
   return (
     <div className="sidebar">
       <div className="search">
@@ -214,61 +225,30 @@ function Sidebar({ files, onFileSelect, onNewNote, onDeleteNote, currentFile }) 
           placeholder="Поиск..."
           value={searchTerm}
           onChange={handleSearchChange}
-          style={{ 
-            marginBottom: '10px',
-            padding: '8px', 
-            boxSizing: 'border-box',
-            width: '100%'
-          }}
+          style={{ padding: '8px', alignitems: 'center'}}
         />
-      </div>
-      
-      <div style={{ marginBottom: '50px' }}>
-        <button 
-          onClick={onNewNote}
-          style={{
-            padding: '12px 16px',
-            backgroundColor: '#4CAF50',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            width: '100%',
-            fontSize: '14px',
-            fontWeight: 'bold',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-          }}
-        >
-          + Создать заметку
-        </button>
-      </div>
-      
-      <div style={{ marginTop: '15px' }}>
-        <div style={{ 
-          color: 'rgb(134, 176, 179)', 
-          fontSize: '12px', 
-          marginBottom: '12px',
-          padding: '0 5px',
-          fontWeight: 'bold'
-        }}>
-          Заметки ({filteredFiles.length})
-        </div>
-        <ul style={{ margin: 0, padding: 0 }}>
+      </div> 
+
+      <div className="note-section">
+        <div className="note-head">
+          <div className="notes-title">
+            Заметки ({filteredFiles.length})
+          </div>
+          <button className="new-note-button-container" 
+          title="Создать новую заметку"
+          onClick={onNewNote}>
+          <img src={newnote} alt="new-note" className="new-note-icon" />
+          </button>
+        </div> 
+
+        <ul className="notes-list">
           {filteredFiles.map(file => (
             <li 
               key={file.id}
               onClick={() => onFileSelect(file.path)}
               onContextMenu={(e) => handleContextMenu(e, file.id, file.name)}
               style={{
-                backgroundColor: currentFile === file.path ? 'rgba(255,255,255,0.2)' : 'transparent',
-                padding: '10px 12px',
-                marginBottom: '6px',
-                cursor: 'pointer',
-                borderRadius: '6px',
-                transition: 'background-color 0.2s',
-                listStyle: 'none',
-                border: '1px solid rgba(255,255,255,0.1)'
-              }}
+                backgroundColor: currentFile === file.path}}
               onMouseEnter={(e) => {
                 if (currentFile !== file.path) {
                   e.target.style.backgroundColor = 'rgba(255,255,255,0.1)';
@@ -286,27 +266,27 @@ function Sidebar({ files, onFileSelect, onNewNote, onDeleteNote, currentFile }) 
         </ul>
       </div>
 
+      <div className="button-container">
+        <button className="settings-button" 
+        title="Настройки"
+        onClick={handleSettingsClick}>
+          <img src={settings} alt="settings" className="settings-icon" />
+        </button>
+        <button className="graph-button" 
+        title="Граф"
+        onClick={handleSettingsClick}>
+        <img src={graph} alt="graph" className="graph-icon" />
+        </button>
+      </div>
+
       {contextMenu.visible && (
-        <div
+        <div className="context-menu"
           style={{
-            position: 'fixed',
             top: contextMenu.y,
             left: contextMenu.x,
-            backgroundColor: 'white',
-            border: '1px solid #ccc',
-            borderRadius: '4px',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-            zIndex: 1000,
-            minWidth: '150px'
           }}
         >
-          <div
-            style={{
-              padding: '8px 12px',
-              cursor: 'pointer',
-              borderBottom: '1px solid #eee',
-              color: '#ff6b6b'
-            }}
+          <div className="contex-menu-delete"
             onClick={() => handleContextMenuAction('delete')}
             onMouseEnter={(e) => e.target.style.backgroundColor = '#f5f5f5'}
             onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
@@ -321,18 +301,12 @@ function Sidebar({ files, onFileSelect, onNewNote, onDeleteNote, currentFile }) 
 
 function GroupSelector({ groupId, groups, onGroupChange, onReloadNotes }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginLeft: '20px' }}>
-      <label style={{ color: 'white', fontSize: '14px' }}>Группа:</label>
+    <div className="group-selector">
+      <label>Группа:</label>
       <select 
         value={groupId} 
         onChange={(e) => onGroupChange(e.target.value)}
-        style={{ 
-          padding: '6px 10px', 
-          borderRadius: '6px', 
-          border: '1px solid #ccc',
-          backgroundColor: 'white',
-          minWidth: '120px'
-        }}
+        className="group-select"
       >
         {groups.map(group => (
           <option key={group} value={group}>
@@ -342,19 +316,9 @@ function GroupSelector({ groupId, groups, onGroupChange, onReloadNotes }) {
       </select>
       <button 
         onClick={onReloadNotes}
-        style={{
-          padding: '6px 10px',
-          backgroundColor: '#FF9800',
-          color: 'white',
-          border: 'none',
-          borderRadius: '6px',
-          cursor: 'pointer',
-          fontSize: '12px',
-          fontWeight: 'bold'
-        }}
-        title="Обновить список заметок"
-      >
-        🔄
+        className="reload-button"
+        title="Обновить список заметок">
+        <img src={update} alt="update" className="update-icon" />
       </button>
     </div>
   );
@@ -448,7 +412,7 @@ function WorkNotePage() {
 
   const handleTextChange = (e) => {
     setText(e.target.value);
-  }; // ← Закрывающая фигурная скобка была пропущена
+  }; 
 
   const handleSaveNote = async () => {
     if (!noteTitle.trim()) {
@@ -558,8 +522,7 @@ function WorkNotePage() {
   };
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'row' }}>
-      
+    <div className="worknote-container">
       <div>
         <Sidebar 
           files={files} 
@@ -570,30 +533,15 @@ function WorkNotePage() {
         />
       </div>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ 
-          padding: '10px', 
-          borderBottom: '1px solid #ccc',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          backgroundColor: '#595789'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <h2 style={{ margin: 0, color: 'white' }}>  
+      <div className="main-content">
+        <div className="header">
+          <div className="header-left">
+            <h2>  
               <input
                 type="text"
                 value={noteTitle}
                 onChange={handleTitleChange}
-                style={{ 
-                  fontSize: '1.5em', 
-                  width: '300px', 
-                  boxSizing: 'border-box',
-                  padding: '8px 12px',
-                  border: '1px solid #ccc',
-                  borderRadius: '6px',
-                  backgroundColor: 'white'
-                }}
+                className="title-input"
                 placeholder="Название заметки"
               />
             </h2>
@@ -606,15 +554,11 @@ function WorkNotePage() {
             />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="header-right">
             {saveMessage && (
-              <span style={{ 
+              <span className="save-message" style={{ 
                 color: saveMessage.includes('✅') ? '#4CAF50' : 
-                       saveMessage.includes('❌') ? '#f44336' : '#FF9800',
-                fontWeight: 'bold',
-                marginRight: '10px',
-                fontSize: '14px'
-              }}>
+                       saveMessage.includes('❌') ? '#f44336' : '#FF9800'}}>
                 {saveMessage}
               </span>
             )}
@@ -622,103 +566,54 @@ function WorkNotePage() {
             <button 
               onClick={handleSaveNote} 
               disabled={saving || deleting}
+              className="save-button"
+              title="Сохранить заметку"
               style={{
-                padding: '10px 18px',
-                backgroundColor: saving ? '#6c757d' : '#28a745',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: (saving || deleting) ? 'not-allowed' : 'pointer',
-                fontWeight: 'bold',
-                fontSize: '14px'
-              }}
-            >
-              {saving ? '💾 Сохранение...' : '💾 Сохранить'}
+                backgroundColor: saving ? '#6c757d' : '#61dafb',
+                cursor: (saving || deleting) ? 'not-allowed' : 'pointer'
+              }}>
+              <img src={savesave} alt="saving" className="saving-icon" />
             </button>
 
             {!isEditing ? (
               <button 
                 onClick={handleEnterEditMode}
                 disabled={deleting}
+                className="edit-button"
+                title="Редактировать заметку"
                 style={{
-                  padding: '10px 18px',
-                  backgroundColor: '#2196F3',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: deleting ? 'not-allowed' : 'pointer',
-                  fontWeight: 'bold',
-                  fontSize: '14px'
-                }}
-              >
-                Редактировать
+                  cursor: deleting ? 'not-allowed' : 'pointer'}}>
+                <img src={editing} alt="editing" className="editing-icon" />
               </button>
             ) : (
               <button 
                 onClick={handleExitEditMode}
                 disabled={saving || deleting}
+                className="done-button"
+                title="Готово"
                 style={{
-                  padding: '10px 18px',
-                  backgroundColor: '#ff9800',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: (saving || deleting) ? 'not-allowed' : 'pointer',
-                  fontWeight: 'bold',
-                  fontSize: '14px'
-                }}
-              >
-                Готово
+                  cursor: (saving || deleting) ? 'not-allowed' : 'pointer'}}>
+                <img src={done} alt="done" className="done-icon" />
               </button>
             )}
           </div>
         </div>
 
         {isEditing ? (
-          <div style={{ display: 'flex', flex: 1, height: 'calc(100vh - 80px)' }}>
+          <div className="editor-container">
             <textarea
-              style={{ 
-                width: '50%', 
-                height: '100%', 
-                resize: 'none', 
-                padding: '15px', 
-                boxSizing: 'border-box', 
-                border: 'none', 
-                outline: 'none',
-                fontFamily: 'monospace',
-                fontSize: '14px',
-                lineHeight: '1.6',
-                backgroundColor: '#f8f9fa'
-              }}
+              className="markdown-editor"
               value={text}
               onChange={handleTextChange}
               placeholder="Начните писать свою заметку в формате Markdown..."
             />
-            <div style={{ 
-              width: '1px', 
-              backgroundColor: '#ccc',
-              margin: '10px 0'
-            }}></div>
-            <div style={{ 
-              width: '50%', 
-              height: '100%', 
-              overflowY: 'auto', 
-              padding: '15px', 
-              boxSizing: 'border-box', 
-              backgroundColor: '#fff', 
-              wordBreak: 'break-word'
-            }}>
+            <div className="editor-divider"></div>
+            <div className="markdown-preview">
               <ReactMarkdown>{text}</ReactMarkdown>
             </div>
           </div>
         ) : (
-          <div style={{ 
-            flex: 1, 
-            overflowY: 'auto', 
-            padding: '20px',
-            wordBreak: 'break-word',
-            backgroundColor: '#fff'
-          }}>
+          <div className="preview-container">
             <ReactMarkdown>{text}</ReactMarkdown>
           </div>
         )}
