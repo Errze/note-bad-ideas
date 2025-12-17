@@ -1,12 +1,10 @@
 /* ===== Graph Page ===== */
 .graph-page {
-  position: absolute;
   top: 0;
-  left: 260px;
   right: 0;
-  bottom: 0;
+  height: 100%;  
   background-color: rgba(11, 18, 32, 0.98);
-  z-index: 100;
+  z-index: 1000;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -157,15 +155,22 @@
 }
 
 /* ===== Canvas Container ===== */
-.graph-canvas-container {
+.graph-main-area {
   flex: 1;
   display: flex;
   gap: 20px;
   min-height: 0;
 }
 
-.graph-canvas {
+.graph-canvas-container {
   flex: 1;
+  position: relative;
+  min-width: 0;
+}
+
+.graph-canvas {
+  width: 100%;
+  height: 100%;
   background: rgba(11, 18, 32, 0.95);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -179,12 +184,14 @@
 
 .graph-instructions {
   width: 220px;
+  flex-shrink: 0;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 12px;
   padding: 15px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   font-size: 13px;
   line-height: 1.5;
+  align-self: flex-start;
 }
 
 .graph-instructions p {
@@ -194,6 +201,12 @@
 
 .graph-instructions strong {
   color: #61dafb;
+}
+
+.graph-page *,
+.graph-page *::before,
+.graph-page *::after {
+  box-sizing: border-box;
 }
 
 /* ===== Node Info ===== */
@@ -270,6 +283,10 @@
 @media (max-width: 1024px) {
   .graph-canvas-container {
     flex-direction: column;
+  }
+
+  .graph-page:not(.mobile) .graph-canvas-container {
+    flex-direction: row !important;
   }
   
   .graph-canvas {
