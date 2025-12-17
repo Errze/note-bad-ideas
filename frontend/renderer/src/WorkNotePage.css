@@ -15,6 +15,8 @@
   padding: 12px;
   box-sizing: border-box;
   border-right: 1px solid rgba(255,255,255,0.12);
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 .search {
@@ -163,7 +165,7 @@
   flex-direction: column;
   gap: 10px;
   padding: 12px 14px;
-  background: #033E6B;
+  background: linear-gradient(135deg, #033E6B 0%, #0B61A4 100%) ;
   border-bottom: 1px solid rgba(255,255,255,0.12);
 }
 
@@ -285,6 +287,11 @@
   height: 26px;
 }
 
+.low-icon-img {
+  width: 35%;
+  height: 80%;
+}
+
 /* ===== Save message ===== */
 .save-message {
   font-size: 13px;
@@ -326,6 +333,8 @@
   font-size: 14px;
   line-height: 1.7;
   background-color: #fbfcfe;
+  word-break: break-word; 
+  overflow-wrap: break-word;
 }
 
 .editor-divider {
@@ -338,10 +347,14 @@
   padding: 18px;
   overflow-y: auto;
   background: #fff;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .preview-only {
   padding: 20px 20px 34px;
+  word-break: break-word; 
+  overflow-wrap: break-word;
 }
 
 /* Markdown */

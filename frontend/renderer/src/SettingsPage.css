@@ -1,0 +1,333 @@
+/* ===== Settings Container ===== */
+.settings-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #0b1220;
+  color: #ffffff;
+  overflow: hidden;
+}
+
+/* ===== Header ===== */
+.settings-header {
+  background: linear-gradient(135deg, #033E6B 0%, #0B61A4 100%);
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-back-button {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  color: #ffffff;
+  padding: 10px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  width: fit-content;
+}
+
+.settings-back-button:hover {
+  background: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+}
+
+.settings-back-button:active {
+  transform: translateY(0);
+}
+
+.settings-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+/* ===== Content ===== */
+.settings-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+/* ===== Message ===== */
+.settings-message {
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  background: rgba(97, 218, 251, 0.15);
+  border: 1px solid rgba(97, 218, 251, 0.3);
+  color: #61dafb;
+}
+
+.settings-message.success {
+  background: rgba(76, 175, 80, 0.15);
+  border-color: rgba(76, 175, 80, 0.3);
+  color: #4caf50;
+}
+
+.settings-message.error {
+  background: rgba(244, 67, 54, 0.15);
+  border-color: rgba(244, 67, 54, 0.3);
+  color: #f44336;
+}
+
+/* ===== Sections ===== */
+.settings-section {
+  background: rgba(255, 255,255, 0.05);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.settings-section-title {
+  margin: 0 0 20px 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #61dafb;
+  border-bottom: 2px solid rgba(97, 218, 251, 0.3);
+  padding-bottom: 8px;
+}
+
+/* ===== Fields ===== */
+.settings-field {
+  margin-bottom: 20px;
+}
+
+.settings-label {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Path selector */
+.path-selector {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.path-input {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-size: 14px;
+  outline: none;
+}
+
+.path-input:focus {
+  border-color: #61dafb;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.path-select-button {
+  padding: 12px 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(97, 218, 251, 0.2);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.path-select-button:hover:not(:disabled) {
+  background: rgba(97, 218, 251, 0.3);
+  transform: translateY(-1px);
+}
+
+.path-select-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.path-select-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Checkbox */
+.settings-checkbox {
+  margin-right: 10px;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+/* Slider */
+.settings-slider {
+  width: 200px;
+  height: 6px;
+  margin: 0 15px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+}
+
+.settings-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #61dafb;
+  cursor: pointer;
+}
+
+.settings-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #61dafb;
+  cursor: pointer;
+  border: none;
+}
+
+.settings-interval-value {
+  display: inline-block;
+  min-width: 50px;
+  font-weight: 700;
+  color: #61dafb;
+}
+
+/* Buttons */
+.settings-test-button,
+.settings-reset-button {
+  padding: 12px 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-test-button:hover:not(:disabled),
+.settings-reset-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+  transform: translateY(-1px);
+}
+
+.settings-test-button:active:not(:disabled),
+.settings-reset-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.settings-test-button:disabled,
+.settings-reset-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Hint text */
+.settings-hint {
+  margin: 8px 0 0 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.5;
+}
+
+/* ===== Actions ===== */
+.settings-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: flex-end;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.settings-save-button {
+  padding: 14px 28px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #61dafb;
+  color: #0b1220;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.settings-save-button:hover:not(:disabled) {
+  background: #4fd3f8;
+  transform: translateY(-2px);
+}
+
+.settings-save-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.settings-save-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.settings-cancel-button {
+  padding: 14px 28px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.settings-cancel-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.settings-cancel-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .settings-content {
+    padding: 16px;
+  }
+  
+  .settings-section {
+    padding: 16px;
+  }
+  
+  .path-selector {
+    flex-direction: column;
+  }
+  
+  .settings-actions {
+    flex-direction: column;
+  }
+  
+  .settings-save-button,
+  .settings-cancel-button {
+    width: 100%;
+  }
+}

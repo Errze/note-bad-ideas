@@ -39,11 +39,10 @@
 
 .button-row {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   width: 40vw; /* ширина контейнера кнопок, регулируйте по желанию */
   max-width: 300px; /* максимум ширины */
   margin: 20px auto; /* отступ сверху/снизу и центрирование */
-  gap: 50px; /* расстояние между кнопками */
 }
 
 .button-row button {
