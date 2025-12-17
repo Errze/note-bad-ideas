@@ -1,67 +1,73 @@
-const API_BASE = "http://localhost:3001"; // твой backend
+const API_BASE = "http://localhost:3001";
 
 const notesApi = {
-  async getGroups() {
-    const res = await fetch(`${API_BASE}/api/groups`);
-    if (!res.ok) throw new Error("Failed to load groups");
-    return res.json();
+  getGroups() {
+    return request(`${API_BASE}/api/groups`);
   },
 
-  async createGroup(name) {
-    const res = await fetch(`${API_BASE}/api/groups`, {
+  createGroup(title) {
+    return request(`${API_BASE}/api/groups`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ title }),
     });
-    if (!res.ok) throw new Error("Failed to create group");
-    return res.json();
   },
 
-  async getAllNotes(groupId) {
-    const res = await fetch(`${API_BASE}/api/groups/${groupId}/notes`);
-    if (!res.ok) throw new Error("Failed to load notes");
-    return res.json();
+  updateGroup: (groupId, patch) =>
+  request(`${API_BASE}/api/groups/${groupId}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  }),
+
+  deleteGroup: (groupId) =>
+    request(`${API_BASE}/api/groups/${groupId}`, {
+      method: "DELETE",
+  }),
+  
+
+  getAllNotes(groupId) {
+    return request(`${API_BASE}/api/groups/${groupId}/notes`);
   },
 
-  async getNote(groupId, noteId) {
-    const res = await fetch(
-      `${API_BASE}/api/groups/${groupId}/notes/${noteId}`
-    );
-    if (!res.ok) throw new Error("Failed to load note");
-    return res.json();
+  getNote(groupId, noteId) {
+    return request(`${API_BASE}/api/groups/${groupId}/notes/${noteId}`);
   },
 
-  async createNote(groupId, note) {
-    const res = await fetch(`${API_BASE}/api/groups/${groupId}/notes`, {
+  createNote(groupId, note) {
+    return request(`${API_BASE}/api/groups/${groupId}/notes`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(note),
     });
-    if (!res.ok) throw new Error("Failed to create note");
-    return res.json();
   },
 
-  async updateNote(groupId, noteId, updates) {
-    const res = await fetch(
-      `${API_BASE}/api/groups/${groupId}/notes/${noteId}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
-      }
-    );
-    if (!res.ok) throw new Error("Failed to update note");
-    return res.json();
+  updateNote(groupId, noteId, updates) {
+    return request(`${API_BASE}/api/groups/${groupId}/notes/${noteId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
   },
 
-  async deleteNote(groupId, noteId) {
-    const res = await fetch(
-      `${API_BASE}/api/groups/${groupId}/notes/${noteId}`,
-      { method: "DELETE" }
-    );
-    if (!res.ok) throw new Error("Failed to delete note");
-    return res.json();
+  deleteNote(groupId, noteId) {
+    return request(`${API_BASE}/api/groups/${groupId}/notes/${noteId}`, {
+      method: "DELETE",
+    });
   },
 };
 
+async function request(url, options) {
+  const res = await fetch(url, {
+    headers: { "Content-Type": "application/json", ...(options?.headers || {}) },
+    ...options,
+  });
+
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+  return data;
+}
+
 export default notesApi;
+

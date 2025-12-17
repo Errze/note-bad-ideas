@@ -1,268 +1,179 @@
-import React, { useState, useEffect } from "react";
-import ReactMarkdown from 'react-markdown';
-import './WorkNotePage.css';
-import AIAssistant from './AIThing';
-import settings from './settings.png';
-import graph from './graph.png';
-import editing from './editing.png';
-import savesave from './saving.png';
-import update from './update.png';
-import done from './done.png';
-import newnote from './new-note.png';
-import ai from './ai.png';
+import React, { useEffect, useMemo, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import "./WorkNotePage.css";
+import AIAssistant from "./AIThing";
 
-const API_BASE = 'http://localhost:3001';
+import settings from "./settings.png";
+import graph from "./graph.png";
+import editing from "./editing.png";
+import savesave from "./saving.png";
+import update from "./update.png";
+import done from "./done.png";
+import newnote from "./new-note.png";
+import ai from "./ai.png";
 
-const notesApi = {
-  async saveNote(groupId, noteData) {
-    const cleanGroupId = groupId.trim();
-    
-    const url = noteData.id 
-      ? `${API_BASE}/api/groups/${cleanGroupId}/notes/${noteData.id}`
-      : `${API_BASE}/api/groups/${cleanGroupId}/notes`;
+const API_BASE = "http://localhost:3001";
 
-    const method = noteData.id ? 'PATCH' : 'POST';
+// ---------- helper: нормальные ошибки ----------
+async function request(url, options) {
+  const res = await fetch(url, {
+    headers: { "Content-Type": "application/json", ...(options?.headers || {}) },
+    ...options,
+  });
 
-    try {
-      const response = await fetch(url, {
-        method: method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(noteData)
-      });
-      
-      if (!response.ok) {
-        let errorMessage = `HTTP error! status: ${response.status}`;
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;
-        } catch (e) {
-          const errorText = await response.text();
-          errorMessage = errorText || errorMessage;
-        }
-        throw new Error(errorMessage);
-      }
-      
-      return await response.json();
-      
-    } catch (error) {
-      console.error('Fetch error:', error);
-      throw new Error(`Ошибка сохранения: ${error.message}`);
-    }
-  },
-
-  async getNote(groupId, noteId) {
-    try {
-      const response = await fetch(`${API_BASE}/api/groups/${groupId}/notes/${noteId}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Get note error:', error);
-      throw error;
-    }
-  },
-
-  async getAllNotes(groupId) {
-    try {
-      const response = await fetch(`${API_BASE}/api/groups/${groupId}/notes`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Get all notes error:', error);
-      return [];
-    }
-  },
-
-  async deleteNote(groupId, noteId) {
-    try {
-      const response = await fetch(`${API_BASE}/api/groups/${groupId}/notes/${noteId}`, {
-        method: 'DELETE'
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error('Delete note error:', error);
-      throw error;
-    }
-  },
-
-  async getGroups() {
-    try {
-      // Пробуем получить группы из localStorage
-      const groups = localStorage.getItem('availableGroups');
-      return groups ? JSON.parse(groups) : ['test-group-1763402154936'];
-    } catch (error) {
-      console.error('Error getting groups:', error);
-      return ['test-group-1763402154936'];
-    }
-  },
-
-  async saveGroups(groups) {
-    try {
-      localStorage.setItem('availableGroups', JSON.stringify(groups));
-      return groups;
-    } catch (error) {
-      console.error('Error saving groups:', error);
-      throw error;
-    }
-  },
-
-  async createGroup(groupName) {
-    try {
-      console.log('Sending request to create group:', groupName);
-      
-      const response = await fetch(`${API_BASE}/api/groups`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ groupName })
-      });
-      
-      console.log('Response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Server error response:', errorText);
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      console.log('Group creation result:', result);
-      
-      // Сохраняем группу в localStorage
-      const existingGroups = await this.getGroups();
-      console.log('Existing groups:', existingGroups);
-      
-      if (!existingGroups.includes(groupName)) {
-        const newGroups = [...existingGroups, groupName];
-        await this.saveGroups(newGroups);
-        console.log('Groups saved to localStorage:', newGroups);
-      }
-      
-      return result;
-    } catch (error) {
-      console.error('Create group error:', error);
-      throw error;
-    }
-  }
-};
-
-// Функция для загрузки существующих заметок
-const loadExistingNotes = async (groupId) => {
+  const text = await res.text();
+  let data = null;
   try {
-    const notes = await notesApi.getAllNotes(groupId);
-    return notes.map(note => ({
-      name: `${note.title}.md`,
-      path: `/${note.id}`,
-      id: note.id,
-      title: note.title,
-      content: note.content
-    }));
-  } catch (error) {
-    console.error('Error loading existing notes:', error);
-    return [];
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = null; // сервер мог вернуть HTML/текст, не падаем
   }
+
+  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+  return data;
+}
+
+// ---------- API ----------
+const notesApi = {
+  // groups
+  getGroups: () => request(`${API_BASE}/api/groups`),
+  createGroup: (title) =>
+    request(`${API_BASE}/api/groups`, {
+      method: "POST",
+      body: JSON.stringify({ title }),
+    }),
+  updateGroup: (groupId, patch) =>
+    request(`${API_BASE}/api/groups/${groupId}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
+  deleteGroup: (groupId) =>
+    request(`${API_BASE}/api/groups/${groupId}`, {
+      method: "DELETE",
+    }),
+
+  // notes
+  getAllNotes: (groupId) => request(`${API_BASE}/api/groups/${groupId}/notes`),
+  getNote: (groupId, noteId) =>
+    request(`${API_BASE}/api/groups/${groupId}/notes/${noteId}`),
+
+  createNote: (groupId, noteData) =>
+    request(`${API_BASE}/api/groups/${groupId}/notes`, {
+      method: "POST",
+      body: JSON.stringify(noteData),
+    }),
+
+  updateNote: (groupId, noteId, patch) =>
+    request(`${API_BASE}/api/groups/${groupId}/notes/${noteId}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
+
+  deleteNote: (groupId, noteId) =>
+    request(`${API_BASE}/api/groups/${groupId}/notes/${noteId}`, {
+      method: "DELETE",
+    }),
 };
 
-// Компонент бокового меню
-function Sidebar({ files, onFileSelect, onNewNote, onDeleteNote, currentFile }) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, noteId: null, noteName: '' });
-  
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
+// ---------- mapping ----------
+function mapNoteToFile(note) {
+  return {
+    name: `${note.title}.md`,
+    path: `/${note.id}`,
+    id: note.id,
+    title: note.title,
+    content: note.content ?? "",
   };
+}
 
-  const handleContextMenu = (e, noteId, noteName) => {
+// ---------- Sidebar ----------
+function Sidebar({
+  files,
+  currentFile,
+  onFileSelect,
+  onNewNote,
+  onDeleteNote,
+  onReloadNotes,
+  onNotImplemented,
+}) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [contextMenu, setContextMenu] = useState({
+    visible: false,
+    x: 0,
+    y: 0,
+    noteId: null,
+    noteName: "",
+  });
+
+  const filteredFiles = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return files;
+    return files.filter((f) => f.name.toLowerCase().includes(q));
+  }, [files, searchTerm]);
+
+  useEffect(() => {
+    const handleClick = () =>
+      setContextMenu({ visible: false, x: 0, y: 0, noteId: null, noteName: "" });
+    document.addEventListener("click", handleClick);
+    return () => document.removeEventListener("click", handleClick);
+  }, []);
+
+  const openContextMenu = (e, noteId, noteName) => {
     e.preventDefault();
-    setContextMenu({
-      visible: true,
-      x: e.clientX,
-      y: e.clientY,
-      noteId,
-      noteName
-    });
+    setContextMenu({ visible: true, x: e.clientX, y: e.clientY, noteId, noteName });
   };
 
   const handleContextMenuAction = (action) => {
-    if (action === 'delete' && contextMenu.noteId) {
+    if (action === "delete" && contextMenu.noteId) {
       onDeleteNote(contextMenu.noteId, contextMenu.noteName);
     }
-    setContextMenu({ visible: false, x: 0, y: 0, noteId: null, noteName: '' });
+    setContextMenu({ visible: false, x: 0, y: 0, noteId: null, noteName: "" });
   };
-
-  const filteredFiles = files.filter(file =>
-    file.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Закрываем контекстное меню при клике вне его
-  useEffect(() => {
-    const handleClick = () => {
-      setContextMenu({ visible: false, x: 0, y: 0, noteId: null, noteName: '' });
-    };
-    
-    document.addEventListener('click', handleClick);
-    return () => document.removeEventListener('click', handleClick);
-  }, []);
-
-  const handleSettingsClick = () => {
-    alert('Абонент временно недоступен, пожалуйста, перезвоните позднее \nThe number is not available at the moment, please, try again later');
-  };
-
-  
 
   return (
-    <div className="sidebar">
+    <aside className="sidebar">
       <div className="search">
         <input
           type="text"
           placeholder="Поиск..."
           value={searchTerm}
-          onChange={handleSearchChange}
-          style={{ padding: '8px', alignitems: 'center'}}
+          onChange={(e) => setSearchTerm(e.target.value)}
         />
-      </div> 
+      </div>
 
       <div className="note-section">
         <div className="note-head">
-          <div className="notes-title">
-            Заметки ({filteredFiles.length})
+          <div className="notes-title">Заметки ({filteredFiles.length})</div>
+
+          <div className="note-head-actions">
+            <button
+              className="icon-button"
+              title="Обновить заметки"
+              onClick={onReloadNotes}
+              type="button"
+            >
+              <img src={update} alt="reload" className="icon-img" />
+            </button>
+
+            <button
+              className="icon-button primary"
+              title="Создать новую заметку"
+              onClick={onNewNote}
+              type="button"
+            >
+              <img src={newnote} alt="new-note" className="icon-img" />
+            </button>
           </div>
-          <button className="new-note-button-container" 
-          title="Создать новую заметку"
-          onClick={onNewNote}>
-          <img src={newnote} alt="new-note" className="new-note-icon" />
-          </button>
-        </div> 
+        </div>
 
         <ul className="notes-list">
-          {filteredFiles.map(file => (
-            <li 
+          {filteredFiles.map((file) => (
+            <li
               key={file.id}
+              className={currentFile === file.path ? "active" : ""}
               onClick={() => onFileSelect(file.path)}
-              onContextMenu={(e) => handleContextMenu(e, file.id, file.name)}
-              style={{
-                backgroundColor: currentFile === file.path}}
-              onMouseEnter={(e) => {
-                if (currentFile !== file.path) {
-                  e.target.style.backgroundColor = 'rgba(255,255,255,0.1)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (currentFile !== file.path) {
-                  e.target.style.backgroundColor = 'transparent';
-                }
-              }}
+              onContextMenu={(e) => openContextMenu(e, file.id, file.name)}
+              title={file.name}
             >
               {file.name}
             </li>
@@ -271,379 +182,621 @@ function Sidebar({ files, onFileSelect, onNewNote, onDeleteNote, currentFile }) 
       </div>
 
       <div className="button-container">
-        <button className="settings-button" 
-        title="Настройки"
-        onClick={handleSettingsClick}>
-          <img src={settings} alt="settings" className="settings-icon" />
+        <button
+          className="settings-button"
+          title="Настройки"
+          onClick={() => onNotImplemented?.()}
+          type="button"
+        >
+          <img src={settings} alt="settings" className="icon-img" />
         </button>
-        <button className="graph-button" 
-        title="Граф"
-        onClick={handleSettingsClick}>
-        <img src={graph} alt="graph" className="graph-icon" />
+
+        <button
+          className="graph-button"
+          title="Граф"
+          onClick={() => onNotImplemented?.()}
+          type="button"
+        >
+          <img src={graph} alt="graph" className="icon-img" />
         </button>
       </div>
 
       {contextMenu.visible && (
-        <div className="context-menu"
-          style={{
-            top: contextMenu.y,
-            left: contextMenu.x,
-          }}
-        >
-          <div className="contex-menu-delete"
-            onClick={() => handleContextMenuAction('delete')}
-            onMouseEnter={(e) => e.target.style.backgroundColor = '#f5f5f5'}
-            onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-          >
+        <div className="context-menu" style={{ top: contextMenu.y, left: contextMenu.x }}>
+          <div className="contex-menu-delete" onClick={() => handleContextMenuAction("delete")}>
             Удалить "{contextMenu.noteName}"
           </div>
+        </div>
+      )}
+    </aside>
+  );
+}
+
+// ---------- GroupSelector ----------
+function GroupSelector({ groupId, groups, onGroupChange, onCreateGroup, onOpenManager }) {
+  const [isCreating, setIsCreating] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+
+  const submit = async () => {
+    const t = newTitle.trim();
+    if (!t) return;
+    await onCreateGroup(t);
+    setNewTitle("");
+    setIsCreating(false);
+  };
+
+  return (
+    <div className="group-selector">
+      <span>Группа:</span>
+
+      <select
+        value={groupId || ""}
+        onChange={(e) => onGroupChange(e.target.value)}
+        className="group-select"
+      >
+        {groups.map((g) => (
+          <option key={g.id} value={g.id}>
+            {g.title}
+          </option>
+        ))}
+      </select>
+
+      <button
+        className="icon-button primary"
+        title="Создать группу"
+        type="button"
+        onClick={() => setIsCreating((v) => !v)}
+      >
+        <span style={{ fontWeight: 900, fontSize: 20, lineHeight: 1 }}>+</span>
+      </button>
+
+      <button className="icon-button" title="Управление группами" type="button" onClick={onOpenManager}>
+        <span style={{ fontWeight: 900, fontSize: 18, lineHeight: 1 }}>⋯</span>
+      </button>
+
+      {isCreating && (
+        <div className="group-popover">
+          <input
+            className="group-popover-input"
+            placeholder="Название группы"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submit();
+              if (e.key === "Escape") {
+                setIsCreating(false);
+                setNewTitle("");
+              }
+            }}
+          />
+          <button className="group-popover-btn" type="button" onClick={submit}>
+            Создать
+          </button>
         </div>
       )}
     </div>
   );
 }
 
-function GroupSelector({ groupId, groups, onGroupChange, onReloadNotes }) {
+// ---------- GroupManager ----------
+function GroupManager({ groups, currentGroup, onRename, onDelete, onClose }) {
+  const [editId, setEditId] = useState(null);
+  const [value, setValue] = useState("");
+
   return (
-    <div className="group-selector">
-      <label>Группа:</label>
-      <select 
-        value={groupId} 
-        onChange={(e) => onGroupChange(e.target.value)}
-        className="group-select"
-      >
-        {groups.map(group => (
-          <option key={group} value={group}>
-            {group}
-          </option>
-        ))}
-      </select>
-      <button 
-        onClick={onReloadNotes}
-        className="reload-button"
-        title="Обновить список заметок">
-        <img src={update} alt="update" className="update-icon" />
-      </button>
+    <div className="group-manager-overlay" onClick={onClose}>
+      <div className="group-manager" onClick={(e) => e.stopPropagation()}>
+        <div className="group-manager-title">Группы</div>
+
+        <div className="group-manager-list">
+          {groups.map((g) => {
+            const isCurrent = g.id === currentGroup;
+            const isEditing = editId === g.id;
+
+            return (
+              <div key={g.id} className={`group-row ${isCurrent ? "current" : ""}`}>
+                {isEditing ? (
+                  <>
+                    <input
+                      className="group-row-input"
+                      value={value}
+                      onChange={(e) => setValue(e.target.value)}
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          const t = value.trim();
+                          if (t) onRename(g.id, t);
+                          setEditId(null);
+                        }
+                        if (e.key === "Escape") setEditId(null);
+                      }}
+                    />
+                    <button
+                      className="group-row-btn"
+                      type="button"
+                      onClick={() => {
+                        const t = value.trim();
+                        if (t) onRename(g.id, t);
+                        setEditId(null);
+                      }}
+                      title="Сохранить"
+                    >
+                      OK
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="group-row-name" title={g.title}>
+                      {g.title}
+                    </div>
+
+                    <div className="group-row-actions">
+                      <button
+                        className="group-row-btn"
+                        type="button"
+                        title="Переименовать"
+                        onClick={() => {
+                          setEditId(g.id);
+                          setValue(g.title);
+                        }}
+                      >
+                        ✏️
+                      </button>
+
+                      <button
+                        className="group-row-btn danger"
+                        type="button"
+                        title={isCurrent ? "Нельзя удалить текущую группу" : "Удалить"}
+                        disabled={isCurrent}
+                        onClick={() => onDelete(g.id)}
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="group-manager-footer">
+          <button className="group-manager-close" onClick={onClose} type="button">
+            Закрыть
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
 
+// ---------- Confirm modals ----------
+function ConfirmDeleteGroupModal({ groupTitle, onCancel, onConfirm, loading }) {
+  return (
+    <div className="modal-backdrop" onMouseDown={onCancel}>
+      <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="modal-title">Удалить группу?</div>
+        <div className="modal-text">
+          Группа <b>{groupTitle}</b> будет удалена.
+          <br />
+          <span className="modal-warn">ВНИМАНИЕ: заметки в группе тоже будут удалены.</span>
+        </div>
+
+        <div className="modal-actions">
+          <button className="modal-btn" type="button" onClick={onCancel} disabled={loading}>
+            Отмена
+          </button>
+          <button className="modal-btn danger" type="button" onClick={onConfirm} disabled={loading}>
+            {loading ? "Удаляем..." : "Удалить"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmDeleteNoteModal({ noteName, onCancel, onConfirm, loading }) {
+  return (
+    <div className="modal-backdrop" onMouseDown={onCancel}>
+      <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="modal-title">Удалить заметку?</div>
+        <div className="modal-text">
+          Заметка <b>{noteName}</b> будет удалена. Без чудес восстановления.
+        </div>
+
+        <div className="modal-actions">
+          <button className="modal-btn" type="button" onClick={onCancel} disabled={loading}>
+            Отмена
+          </button>
+          <button className="modal-btn danger" type="button" onClick={onConfirm} disabled={loading}>
+            {loading ? "Удаляем..." : "Удалить"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- WorkNotePage ----------
 function WorkNotePage() {
   const [files, setFiles] = useState([]);
-  const [currentFile, setCurrentFile] = useState('');
-  const [text, setText] = useState('');
+  const [currentFile, setCurrentFile] = useState("");
+  const [text, setText] = useState("");
   const [isEditing, setIsEditing] = useState(false);
-  const [noteTitle, setNoteTitle] = useState('Новая заметка');
-  const [groups, setGroups] = useState([]);
-  const [currentGroup, setCurrentGroup] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [saveMessage, setSaveMessage] = useState('');
-  const [currentNoteId, setCurrentNoteId] = useState(null);
-  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
+  const [noteTitle, setNoteTitle] = useState("Новая заметка");
 
-  // Загрузка групп при монтировании
+  const [groups, setGroups] = useState([]);
+  const [currentGroup, setCurrentGroup] = useState("");
+
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
+  const [currentNoteId, setCurrentNoteId] = useState(null);
+
+  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
+  const [isGroupManagerOpen, setIsGroupManagerOpen] = useState(false);
+
+  // confirm states
+  const [confirmDeleteGroup, setConfirmDeleteGroup] = useState(null); // {id,title} | null
+  const [deletingGroup, setDeletingGroup] = useState(false);
+
+  const [confirmDeleteNote, setConfirmDeleteNote] = useState(null); // {id,name} | null
+  const [deletingNote, setDeletingNote] = useState(false);
+
+  const busy = saving || deletingGroup || deletingNote;
+
+  // --- toast (НЕ alert, не блокирует ввод) ---
+  const showToast = (msg) => {
+    setSaveMessage(msg);
+    window.clearTimeout(showToast._t);
+    showToast._t = window.setTimeout(() => setSaveMessage(""), 1500);
+  };
+
+  // ---- load groups on mount ----
   useEffect(() => {
-    loadGroups();
+    (async () => {
+      try {
+        const gs = await notesApi.getGroups();
+        setGroups(gs);
+        if (gs.length) setCurrentGroup(gs[0].id);
+      } catch (e) {
+        console.error(e);
+        showToast(`❌ Ошибка загрузки групп: ${e.message}`);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Загрузка заметок при изменении группы
+  // ---- load notes when group changes ----
   useEffect(() => {
-    if (currentGroup) {
-      loadNotesForGroup();
-    }
+    if (!currentGroup) return;
+    loadNotesForGroup(currentGroup);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentGroup]);
 
-  const loadGroups = async () => {
+  const loadNotesForGroup = async (groupId) => {
     try {
-      const availableGroups = await notesApi.getGroups();
-      setGroups(availableGroups);
-      if (availableGroups.length > 0 && !currentGroup) {
-        setCurrentGroup(availableGroups[0]);
-      }
-    } catch (error) {
-      console.error('Error loading groups:', error);
-    }
-  };
+      const notes = await notesApi.getAllNotes(groupId);
+      const mapped = notes.map(mapNoteToFile);
+      setFiles(mapped);
 
-  const loadNotesForGroup = async () => {
-    try {
-      const existingNotes = await loadExistingNotes(currentGroup);
-      setFiles(existingNotes);
-      
-      if (existingNotes.length > 0 && !currentFile) {
-        handleFileSelect(existingNotes[0].path);
-      } else if (existingNotes.length === 0) {
-        setCurrentFile('');
-        setNoteTitle('Новая заметка');
-        setText('# Новая заметка\n\nНачните писать здесь...');
+      if (mapped.length > 0) {
+        await handleFileSelect(mapped[0].path, mapped, groupId);
+      } else {
+        setCurrentFile("");
+        setNoteTitle("Новая заметка");
+        setText("# Новая заметка\n\nНачните писать здесь...");
         setCurrentNoteId(null);
       }
-    } catch (error) {
-      console.error('Error loading notes for group:', error);
+    } catch (e) {
+      console.error(e);
+      setFiles([]);
+      showToast(`❌ Ошибка загрузки заметок: ${e.message}`);
     }
   };
 
-  const handleFileSelect = async (path) => {
-    const selectedFile = files.find(f => f.path === path);
-    if (selectedFile) {
-      setCurrentFile(path);
-      setNoteTitle(selectedFile.title);
-      setCurrentNoteId(selectedFile.id);
-      
-      try {
-        const fullNote = await notesApi.getNote(currentGroup, selectedFile.id);
-        setText(fullNote.content || '');
-      } catch (error) {
-        console.error('Error loading note content:', error);
-        setText(selectedFile.content || '');
-      }
-      
-      setSaveMessage('');
-    }
-  };
+  const handleFileSelect = async (path, list = files, groupId = currentGroup) => {
+    const selectedFile = list.find((f) => f.path === path);
+    if (!selectedFile) return;
 
-  const handleEnterEditMode = () => {
-    setIsEditing(true);
-  };
-
-  const handleExitEditMode = () => {
-    setIsEditing(false);
-  };
-
-  const handleTitleChange = (e) => {
-    setNoteTitle(e.target.value);
-  };
-
-  const handleTextChange = (e) => {
-    setText(e.target.value);
-  }; 
-
-  const handleSaveNote = async () => {
-    if (!noteTitle.trim()) {
-      setSaveMessage('❌ Заголовок не может быть пустым');
-      return;
-    }
-
-    if (!currentGroup) {
-      setSaveMessage('❌ Выберите группу для сохранения');
-      return;
-    }
-
-    setSaving(true);
-    setSaveMessage('Сохраняем...');
+    setCurrentFile(path);
+    setNoteTitle(selectedFile.title);
+    setCurrentNoteId(selectedFile.id);
 
     try {
-      const noteData = {
-        title: noteTitle,
-        content: text,
-        tags: ['saved-from-frontend'],
-        contentJson: {},
-        metadata: {
-          wordCount: text.split(/\s+/).length,
-          characterCount: text.length,
-          aiAnalysis: {},
-          connections: []
-        }
-      };
+      const full = await notesApi.getNote(groupId, selectedFile.id);
+      setText(full.content ?? "");
+    } catch (e) {
+      console.error(e);
+      setText(selectedFile.content ?? "");
+    }
+  };
 
-      if (currentNoteId) {
-        noteData.id = currentNoteId;
-      }
+  const handleSaveNote = async () => {
+    if (!noteTitle.trim()) return showToast("❌ Заголовок не может быть пустым");
+    if (!currentGroup) return showToast("❌ Выберите группу");
 
-      const savedNote = await notesApi.saveNote(currentGroup, noteData);
-      
-      const updatedFiles = files.filter(file => file.id !== savedNote.id);
-      const newFile = {
-        name: `${savedNote.title}.md`,
-        path: `/${savedNote.id}`,
-        id: savedNote.id,
-        title: savedNote.title,
-        content: savedNote.content
-      };
-      
-      setFiles([newFile, ...updatedFiles]);
-      setCurrentNoteId(savedNote.id);
+    setSaving(true);
+    setSaveMessage("Сохраняем...");
+
+    try {
+      const payload = { title: noteTitle, content: text };
+
+      const saved = currentNoteId
+        ? await notesApi.updateNote(currentGroup, currentNoteId, payload)
+        : await notesApi.createNote(currentGroup, payload);
+
+      const newFile = mapNoteToFile(saved);
+      setFiles((prev) => [newFile, ...prev.filter((f) => f.id !== saved.id)]);
+      setCurrentNoteId(saved.id);
       setCurrentFile(newFile.path);
 
-      setSaveMessage('✅ Заметка успешно сохранена!');
-      
-      setTimeout(() => {
-        setIsEditing(false);
-      }, 2000);
-
-    } catch (error) {
-      setSaveMessage(`❌ Ошибка: ${error.message}`);
-      console.error('Save error:', error);
+      showToast("✅ Сохранено");
+      setTimeout(() => setIsEditing(false), 350);
+    } catch (e) {
+      console.error(e);
+      showToast(`❌ Ошибка: ${e.message}`);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDeleteNote = async (noteId, noteName) => {
-    if (!window.confirm(`Вы уверены, что хотите удалить заметку "${noteName}"?`)) {
-      return;
-    }
+  // ------- delete note: open modal -------
+  const handleDeleteNote = (noteId, noteName) => {
+    setConfirmDeleteNote({ id: noteId, name: noteName });
+  };
 
-    setDeleting(true);
+  // ------- delete note: confirm -------
+  const handleConfirmDeleteNote = async () => {
+    if (!confirmDeleteNote) return;
+
+    const { id } = confirmDeleteNote;
+    setDeletingNote(true);
 
     try {
-      await notesApi.deleteNote(currentGroup, noteId);
-      
-      const updatedFiles = files.filter(file => file.id !== noteId);
-      setFiles(updatedFiles);
-      
-      if (currentNoteId === noteId) {
-        setCurrentFile('');
-        setNoteTitle('Новая заметка');
-        setText('# Новая заметка\n\nНачните писать здесь...');
+      await notesApi.deleteNote(currentGroup, id);
+      setFiles((prev) => prev.filter((f) => f.id !== id));
+
+      if (currentNoteId === id) {
+        setCurrentFile("");
+        setNoteTitle("Новая заметка");
+        setText("# Новая заметка\n\nНачните писать здесь...");
         setCurrentNoteId(null);
       }
-      
-      setSaveMessage('✅ Заметка успешно удалена!');
-      
-    } catch (error) {
-      setSaveMessage(`❌ Ошибка удаления: ${error.message}`);
-      console.error('Delete error:', error);
+
+      showToast("✅ Заметка удалена");
+    } catch (e) {
+      console.error(e);
+      showToast(`❌ Ошибка удаления: ${e.message}`);
     } finally {
-      setDeleting(false);
+      setDeletingNote(false);
+      setConfirmDeleteNote(null);
     }
   };
 
   const handleNewNote = () => {
-    const newNoteTitle = `Новая заметка ${files.length + 1}`;
-    
-    setCurrentFile('');
-    setNoteTitle(newNoteTitle);
-    setText('# Новая заметка\n\nНачните писать здесь...');
+    const newTitle = `Новая заметка ${files.length + 1}`;
+    setCurrentFile("");
+    setNoteTitle(newTitle);
+    setText("# Новая заметка\n\nНачните писать здесь...");
     setCurrentNoteId(null);
-    setSaveMessage('');
     setIsEditing(true);
   };
 
-  const handleReloadNotes = () => {
-    loadNotesForGroup();
-    setSaveMessage('🔄 Список заметок обновлен');
+  const handleReloadNotes = async () => {
+    if (!currentGroup) return;
+    await loadNotesForGroup(currentGroup);
+    showToast("🔄 Обновлено");
   };
 
-  const handleOpenAIAssistant = () => {
-    setIsAIAssistantOpen(true);
+  const handleCreateGroup = async (title) => {
+    try {
+      const created = await notesApi.createGroup(title);
+      setGroups((prev) => [created, ...prev]);
+      setCurrentGroup(created.id);
+      showToast("✅ Группа создана");
+    } catch (e) {
+      console.error(e);
+      showToast(`❌ Не удалось создать группу: ${e.message}`);
+    }
   };
 
-  const handleCloseAIAssistant = () => {
-    setIsAIAssistantOpen(false);
+  const handleRenameGroup = async (groupId, title) => {
+    try {
+      const updated = await notesApi.updateGroup(groupId, { title });
+      setGroups((prev) => prev.map((g) => (g.id === groupId ? updated : g)));
+      showToast("✅ Группа переименована");
+    } catch (e) {
+      console.error(e);
+      showToast(`❌ Не удалось переименовать: ${e.message}`);
+    }
+  };
+
+  // ------- delete group: ask (open modal) -------
+  const handleAskDeleteGroup = (groupId) => {
+    const g = groups.find((x) => x.id === groupId);
+    if (!g) return;
+
+    if (currentGroup === groupId) {
+      showToast("⚠️ Нельзя удалить текущую группу. Переключись на другую.");
+      return;
+    }
+
+    setConfirmDeleteGroup({ id: g.id, title: g.title });
+  };
+
+  // ------- delete group: confirm -------
+  const handleConfirmDeleteGroup = async () => {
+    if (!confirmDeleteGroup) return;
+
+    const { id } = confirmDeleteGroup;
+    setDeletingGroup(true);
+
+    try {
+      await notesApi.deleteGroup(id);
+      setGroups((prev) => prev.filter((x) => x.id !== id));
+
+      // если вдруг удалили текущую (мы запретили, но на всякий случай)
+      if (currentGroup === id) {
+        const rest = groups.filter((x) => x.id !== id);
+        setCurrentGroup(rest[0]?.id || "");
+      }
+
+      showToast("✅ Группа удалена");
+    } catch (e) {
+      console.error(e);
+      showToast(`❌ Не удалось удалить: ${e.message}`);
+    } finally {
+      setDeletingGroup(false);
+      setConfirmDeleteGroup(null);
+    }
   };
 
   return (
     <div className="worknote-container">
-      <div>
-        <Sidebar 
-          files={files} 
-          onFileSelect={handleFileSelect}
-          onNewNote={handleNewNote}
-          onDeleteNote={handleDeleteNote}
-          currentFile={currentFile}
-        />
-      </div>
+      <Sidebar
+        files={files}
+        currentFile={currentFile}
+        onFileSelect={handleFileSelect}
+        onNewNote={handleNewNote}
+        onDeleteNote={handleDeleteNote}
+        onReloadNotes={handleReloadNotes}
+        onNotImplemented={() => showToast("⚠️ Функция пока не реализована")}
+      />
 
       <div className="main-content">
         <div className="header">
-          <div className="header-left">
-            <h2>  
+          {/* row 1: title + save/edit */}
+          <div className="header-row">
+            <div className="header-left">
               <input
                 type="text"
                 value={noteTitle}
-                onChange={handleTitleChange}
+                onChange={(e) => setNoteTitle(e.target.value)}
                 className="title-input"
                 placeholder="Название заметки"
               />
-            </h2>
-            
-            <GroupSelector
-              groupId={currentGroup}
-              groups={groups}
-              onGroupChange={setCurrentGroup}
-              onReloadNotes={handleReloadNotes}
-            />
+            </div>
+
+            <div className="header-right">
+              <button
+                onClick={handleSaveNote}
+                disabled={busy}
+                className="icon-button primary"
+                title="Сохранить"
+                type="button"
+              >
+                <img src={savesave} alt="save" className="icon-img lg" />
+              </button>
+
+              {!isEditing ? (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  disabled={busy}
+                  className="icon-button"
+                  title="Редактировать"
+                  type="button"
+                >
+                  <img src={editing} alt="edit" className="icon-img lg" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => setIsEditing(false)}
+                  disabled={busy}
+                  className="icon-button"
+                  title="Готово"
+                  type="button"
+                >
+                  <img src={done} alt="done" className="icon-img lg" />
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="header-right">
-            <button 
-              onClick={{handleOpenAIAssistant}} 
-              className="ai-button"
-              title="Обратиться к ИИ"
-              style={{
-                cursor: (saving || deleting) ? 'not-allowed' : 'pointer'
-              }}>
-              <img src={ai} alt="ai" className="ai-icon" />
-            </button>
-            
-            {saveMessage && (
-              <span className="save-message" style={{ 
-                color: saveMessage.includes('✅') ? '#4CAF50' : 
-                       saveMessage.includes('❌') ? '#f44336' : '#FF9800'}}>
-                {saveMessage}
-              </span>
-            )}
-            
-            <button 
-              onClick={handleSaveNote} 
-              disabled={saving || deleting}
-              className="save-button"
-              title="Сохранить заметку"
-              style={{
-                backgroundColor: saving ? '#6c757d' : '#61dafb',
-                cursor: (saving || deleting) ? 'not-allowed' : 'pointer'
-              }}>
-              <img src={savesave} alt="saving" className="saving-icon" />
-            </button>
+          {/* row 2: groups + ai + status */}
+          <div className="header-row">
+            <div className="header-left">
+              <GroupSelector
+                groupId={currentGroup}
+                groups={groups}
+                onGroupChange={setCurrentGroup}
+                onCreateGroup={handleCreateGroup}
+                onOpenManager={() => setIsGroupManagerOpen(true)}
+              />
+            </div>
 
-            {!isEditing ? (
-              <button 
-                onClick={handleEnterEditMode}
-                disabled={deleting}
-                className="edit-button"
-                title="Редактировать заметку"
-                style={{
-                  cursor: deleting ? 'not-allowed' : 'pointer'}}>
-                <img src={editing} alt="editing" className="editing-icon" />
+            <div className="header-right">
+              {saveMessage && <span className="save-message">{saveMessage}</span>}
+
+              <button
+                onClick={() => setIsAIAssistantOpen(true)}
+                className="icon-button"
+                title="ИИ помощник"
+                type="button"
+              >
+                <img src={ai} alt="ai" className="icon-img lg" />
               </button>
-            ) : (
-              <button 
-                onClick={handleExitEditMode}
-                disabled={saving || deleting}
-                className="done-button"
-                title="Готово"
-                style={{
-                  cursor: (saving || deleting) ? 'not-allowed' : 'pointer'}}>
-                <img src={done} alt="done" className="done-icon" />
-              </button>
-            )}
+            </div>
           </div>
         </div>
 
         {isEditing ? (
           <div className="editor-container">
-            <textarea
-              className="markdown-editor"
-              value={text}
-              onChange={handleTextChange}
-              placeholder="Начните писать свою заметку в формате Markdown..."
-            />
-            <div className="editor-divider"></div>
-            <div className="markdown-preview">
-              <ReactMarkdown>{text}</ReactMarkdown>
+            <div className="sheet">
+              <div className="editor-inner">
+                <textarea
+                  className="markdown-editor"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder="Начните писать свою заметку в формате Markdown..."
+                />
+                <div className="editor-divider" />
+                <div className="markdown-preview">
+                  <ReactMarkdown>{text}</ReactMarkdown>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
           <div className="preview-container">
-            <ReactMarkdown>{text}</ReactMarkdown>
+            <div className="sheet">
+              <div className="preview-only">
+                <ReactMarkdown>{text}</ReactMarkdown>
+              </div>
+            </div>
           </div>
         )}
       </div>
-      <AIAssistant 
-        isOpen={isAIAssistantOpen}
-        onClose={handleCloseAIAssistant}/>
+
+      <AIAssistant isOpen={isAIAssistantOpen} onClose={() => setIsAIAssistantOpen(false)} />
+
+      {isGroupManagerOpen && (
+        <GroupManager
+          groups={groups}
+          currentGroup={currentGroup}
+          onRename={handleRenameGroup}
+          onDelete={handleAskDeleteGroup}
+          onClose={() => setIsGroupManagerOpen(false)}
+        />
+      )}
+
+      {confirmDeleteGroup && (
+        <ConfirmDeleteGroupModal
+          groupTitle={confirmDeleteGroup.title}
+          onCancel={() => setConfirmDeleteGroup(null)}
+          onConfirm={handleConfirmDeleteGroup}
+          loading={deletingGroup}
+        />
+      )}
+
+      {confirmDeleteNote && (
+        <ConfirmDeleteNoteModal
+          noteName={confirmDeleteNote.name}
+          onCancel={() => setConfirmDeleteNote(null)}
+          onConfirm={handleConfirmDeleteNote}
+          loading={deletingNote}
+        />
+      )}
     </div>
   );
 }

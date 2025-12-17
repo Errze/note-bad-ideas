@@ -5,7 +5,8 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const PATHS = {
-  root: path.resolve(__dirname, "."),
-  data: path.resolve(__dirname, "./data"),
-  groups: path.resolve(__dirname, "./data/groups"),
+  src: path.resolve(__dirname, "."),
+  backend: path.resolve(__dirname, ".."),
+  data: path.resolve(__dirname, "../storage"),
+  groups: path.resolve(__dirname, "../storage/groups"),
 };

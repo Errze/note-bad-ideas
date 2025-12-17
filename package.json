@@ -1,5 +1,13 @@
 {
+  "private": true,
+  "name": "electron-notes-app",
+  "scripts": {
+    "dev": "concurrently \"npm --prefix backend run start\" \"npm --prefix frontend run start-electron\"",
+    "clean": "node scripts/clean-node-modules.js",
+    "install": "node scripts/install-all.js"
+  },
+  "type": "module",
   "devDependencies": {
-    "globals": "^16.5.0"
+    "concurrently": "^9.2.1"
   }
 }
