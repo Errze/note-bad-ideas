@@ -285,19 +285,21 @@ function GraphPage({ notes, onClose }) {
           </div>
         </div>
 
-        <div className="graph-canvas-container">
-          <canvas
-            ref={canvasRef}
-            className="graph-canvas"
-            width={1200}
-            height={600}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onWheel={handleWheel}
-          />
-          
+        <div className="graph-main-area">
+          <div className="graph-canvas-container">
+            <canvas
+              ref={canvasRef}
+              className="graph-canvas"
+              width={1200}
+              height={600}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onWheel={handleWheel}
+            />
+          </div>
+
           <div className="graph-instructions">
             <p>🖱️ <strong>Управление:</strong></p>
             <p>• Клик по узлу - выбрать</p>

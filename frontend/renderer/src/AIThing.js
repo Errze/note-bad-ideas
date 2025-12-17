@@ -29,6 +29,8 @@ const AIAssistant = ({ isOpen, onClose }) => {
 
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [panelWidth, setPanelWidth] = useState(450);
+  const [isResizing, setIsResizing] = useState(false);
   const chatContainerRef = useRef(null);
 
   const pushMessage = useCallback((text, sender) => {
@@ -45,14 +47,45 @@ const AIAssistant = ({ isOpen, onClose }) => {
     }
   }, [messages, isLoading]);
 
+  const startResizing = useCallback((e) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isResizing) return;
+      
+      const minWidth = 350;
+      const maxWidth = 800;
+      const newWidth = Math.max(minWidth, Math.min(maxWidth, window.innerWidth - e.clientX));
+      setPanelWidth(newWidth);
+    };
+
+    const handleMouseUp = () => setIsResizing(false);
+
+    if (isResizing) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      return () => {
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+      };
+    }
+  }, [isResizing]);
+
   const closeAssistant = useCallback(() => {
+    setPanelWidth(450);
     onClose?.();
   }, [onClose]);
 
   // ESC закрывает
   useEffect(() => {
     const handleEscape = (e) => {
-      if (e.key === "Escape" && isOpen) closeAssistant();
+      if (e.key === "Escape" && isOpen) {        
+        setPanelWidth(450);
+        closeAssistant();
+      }
     };
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
@@ -154,9 +187,22 @@ const AIAssistant = ({ isOpen, onClose }) => {
 
   return (
     <>
-      {isOpen && <div className="ai-assistant-overlay" onClick={closeAssistant} />}
+      {isOpen && (
+        <div className="ai-assistant-overlay"
+          onClick={() => {
+            setPanelWidth(450);
+            closeAssistant();
+          }}  
+        />
+      )}
 
-      <div className={`ai-assistant-panel ${isOpen ? "open" : ""}`}>
+      <div className={`ai-assistant-panel ${isOpen ? "open" : ""} ${isResizing ? "resizing" : ""}`}
+      style={{ width: `${panelWidth}px` }}>
+        <div 
+          className="ai-resizer" 
+          onMouseDown={startResizing}
+          title="Потяните для изменения ширины"
+        />        
         <div className="ai-assistant-header">
           <h2>AI-ассистент</h2>
           <button className="ai-assistant-close" onClick={closeAssistant} title="Закрыть" type="button">
