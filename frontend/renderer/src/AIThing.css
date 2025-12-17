@@ -37,7 +37,7 @@
 
 /* Заголовок панели */
 .ai-assistant-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0B61A4 0%, #667eea 100%);
   color: white;
   padding: 20px;
   display: flex;
@@ -203,9 +203,9 @@
 }
 
 .ai-action-btn:hover:not(:disabled) {
-  background: #667eea;
+  background: #3F92D2;
   color: white;
-  border-color: #667eea;
+  border-color: #3F92D2;
   transform: translateY(-2px);
 }
 
@@ -237,7 +237,7 @@
 
 .ai-message-input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #3F92D2;
 }
 
 .ai-message-input:disabled {
@@ -246,7 +246,7 @@
 }
 
 .ai-send-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0B61A4 0%, #667eea 100%);
   color: white;
   border: none;
   padding: 16px;
