@@ -1,13 +1,42 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import "./AIThing.css";
+
+const API_BASE = "http://localhost:3001";
+
+async function postJSON(url, body) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  const text = await res.text();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = { raw: text };
+  }
+
+  if (!res.ok) throw new Error(data?.error || data?.detail || `HTTP ${res.status}`);
+  return data;
+}
 
 const AIAssistant = ({ isOpen, onClose }) => {
   const [messages, setMessages] = useState([
-    { id: 1, text: "Привет, чем могу помочь?", sender: "ai" },
+    { id: 1, text: "Привет. Я твой ассистент. Могу помочь тебе в работе с текстом. Если тебе нужен анализ текста, то напиши об этом и вставь свой текст. Могу помочь с продолжением текста с помощью наводящих вопросов. Напиши свой текст, а я постараюсь тебе помочь!", sender: "ai" },
   ]);
+
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const chatContainerRef = useRef(null);
+
+  const pushMessage = useCallback((text, sender) => {
+    setMessages((prev) => [
+      ...prev,
+      { id: Date.now() + Math.random(), text: String(text ?? ""), sender },
+    ]);
+  }, []);
 
   // автопрокрутка
   useEffect(() => {
@@ -23,11 +52,8 @@ const AIAssistant = ({ isOpen, onClose }) => {
   // ESC закрывает
   useEffect(() => {
     const handleEscape = (e) => {
-      if (e.key === "Escape" && isOpen) {
-        closeAssistant();
-      }
+      if (e.key === "Escape" && isOpen) closeAssistant();
     };
-
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, closeAssistant]);
@@ -44,55 +70,80 @@ const AIAssistant = ({ isOpen, onClose }) => {
     };
   }, [isOpen]);
 
-  const handleQuickAction = (action) => {
-    if (isLoading) return;
+  // превращаем твой UI-формат в формат chat API
+  const chatPayloadMessages = useMemo(() => {
+    // Берем последние N сообщений, чтобы не улетать в контекст бесконечно
+    const last = messages.slice(-20);
 
-    const userMessage = { id: Date.now(), text: action, sender: "user" };
-    setMessages((prev) => [...prev, userMessage]);
-    setIsLoading(true);
+    // Можно добавить system-роль
+    const system = {
+      role: "system",
+      content:
+        "Ты ассистент для текстового редактора. Помогай писать, анализировать (определить стиль, написать плюсы и минусы), продолжать, предлагать улучшения. Пиши структурировано и по делу.",
+    };
 
-    setTimeout(() => {
-      let aiResponse = "";
+    const mapped = last.map((m) => ({
+      role: m.sender === "user" ? "user" : "assistant",
+      content: m.text,
+    }));
 
-      if (action === "Анализ текста") {
-        aiResponse =
-          "Для анализа текста вставьте его в поле ввода, и я помогу с:\n- Определением темы\n- Анализом тональности\n- Проверкой грамматики\n- Извлечением ключевых слов";
-      } else if (action === "Как можно продолжить текст") {
-        aiResponse =
-          "Чтобы продолжить текст, предоставьте его начало. Я могу предложить:\n- Несколько вариантов продолжения\n- Развитие сюжета\n- Альтернативные концовки\n- Стилистические улучшения";
-      } else {
-        aiResponse = `Вы выбрали действие: "${action}". Как помочь конкретнее?`;
+    return [system, ...mapped];
+  }, [messages]);
+
+  const handleQuickAction = useCallback(
+    async (action) => {
+      if (isLoading) return;
+
+      pushMessage(action, "user");
+      setIsLoading(true);
+
+      try {
+        const text = inputText.trim();
+        if (!text) {
+          pushMessage("Вставь текст в поле ввода снизу. Кнопки не умеют читать мысли.", "ai");
+          return;
+        }
+
+        if (action === "Анализ текста") {
+          const data = await postJSON(`${API_BASE}/api/ai/analyze`, { text });
+          pushMessage(data.analysis || "(пустой ответ)", "ai");
+        }  else if (action === "Наводящие вопросы") {
+          const data = await postJSON(`${API_BASE}/api/ai/questions`, { text });
+          pushMessage(data.questions || "(пустой ответ)", "ai");
+        } else {
+          pushMessage(`Неизвестное действие: ${action}`, "ai");
+        }
+      } catch (e) {
+        pushMessage(`Ошибка AI: ${String(e.message || e)}`, "ai");
+      } finally {
+        setIsLoading(false);
       }
+    },
+    [isLoading, inputText, pushMessage]
+  );
 
-      const aiMessage = { id: Date.now() + 1, text: aiResponse, sender: "ai" };
-      setMessages((prev) => [...prev, aiMessage]);
-      setIsLoading(false);
-    }, 900);
-  };
-
-  const handleSendMessage = () => {
+  const handleSendMessage = useCallback(async () => {
     if (!inputText.trim() || isLoading) return;
 
-    const userMessage = { id: Date.now(), text: inputText, sender: "user" };
-    setMessages((prev) => [...prev, userMessage]);
+    const text = inputText.trim();
+    pushMessage(text, "user");
     setInputText("");
     setIsLoading(true);
 
-    setTimeout(() => {
-      const aiResponses = [
-        "Я понял ваш запрос. Могу предложить несколько вариантов решения.",
-        "Интересный вопрос. Давайте разберем его подробнее.",
-        "На основе вашего запроса я подготовил следующие рекомендации...",
-        "Секунду, анализирую и формулирую ответ.",
-        "Вот что могу предложить:",
-      ];
-      const randomResponse = aiResponses[Math.floor(Math.random() * aiResponses.length)];
+    try {
+      const data = await postJSON(`${API_BASE}/api/ai/chat`, {
+        messages: chatPayloadMessages.concat([{ role: "user", content: text }]),
+        temperature: 0.7,
+        max_tokens: 400,
+      });
 
-      const aiMessage = { id: Date.now() + 1, text: randomResponse, sender: "ai" };
-      setMessages((prev) => [...prev, aiMessage]);
+      pushMessage(data.reply || "(пустой ответ)", "ai");
+    } catch (e) {
+      pushMessage(`Ошибка AI: ${String(e.message || e)}`, "ai");
+    } finally {
       setIsLoading(false);
-    }, 1200);
-  };
+    }
+  }, [inputText, isLoading, pushMessage, chatPayloadMessages]);
 
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -116,7 +167,7 @@ const AIAssistant = ({ isOpen, onClose }) => {
         <div className="ai-assistant-content">
           <h3>Творческий помощник</h3>
           <p>
-            <strong>Диалог!</strong>
+            <strong>Диалог</strong>
           </p>
 
           <div className="ai-chat-container" ref={chatContainerRef}>
@@ -137,19 +188,6 @@ const AIAssistant = ({ isOpen, onClose }) => {
             )}
           </div>
 
-          <div className="ai-quick-actions">
-            <button className="ai-action-btn" onClick={() => handleQuickAction("Анализ текста")} disabled={isLoading} type="button">
-              Анализ текста
-            </button>
-            <button
-              className="ai-action-btn"
-              onClick={() => handleQuickAction("Как можно продолжить текст")}
-              disabled={isLoading}
-              type="button"
-            >
-              Как можно продолжить текст?
-            </button>
-          </div>
 
           <div className="ai-input-area">
             <textarea
@@ -157,11 +195,16 @@ const AIAssistant = ({ isOpen, onClose }) => {
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder="Введите сообщение..."
+              placeholder="Введите сообщение или вставьте текст для кнопок..."
               disabled={isLoading}
               rows={3}
             />
-            <button className="ai-send-btn" onClick={handleSendMessage} disabled={!inputText.trim() || isLoading} type="button">
+            <button
+              className="ai-send-btn"
+              onClick={handleSendMessage}
+              disabled={!inputText.trim() || isLoading}
+              type="button"
+            >
               {isLoading ? "Отправка..." : "Отправить"}
             </button>
           </div>
