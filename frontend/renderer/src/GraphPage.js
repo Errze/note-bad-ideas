@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import "./GraphPage.css";
+import "./styles/GraphPage.css";
 
 function GraphPage({ notes, onClose }) {
   const canvasRef = useRef(null);
