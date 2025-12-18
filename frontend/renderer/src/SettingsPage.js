@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import "./SettingsPage.css";
+import "./styles/SettingsPage.css";
 
 const API_BASE = "http://localhost:3001";
 

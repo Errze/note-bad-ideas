@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import "./AIThing.css";
+import "./styles/AIThing.css";
 
 const API_BASE = "http://localhost:3001";
 
@@ -103,12 +103,9 @@ const AIAssistant = ({ isOpen, onClose }) => {
     };
   }, [isOpen]);
 
-  // превращаем твой UI-формат в формат chat API
   const chatPayloadMessages = useMemo(() => {
-    // Берем последние N сообщений, чтобы не улетать в контекст бесконечно
     const last = messages.slice(-20);
 
-    // Можно добавить system-роль
     const system = {
       role: "system",
       content:
@@ -241,7 +238,7 @@ const AIAssistant = ({ isOpen, onClose }) => {
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder="Введите сообщение или вставьте текст для кнопок..."
+              placeholder="Введите сообщение или вставьте текст..."
               disabled={isLoading}
               rows={3}
             />

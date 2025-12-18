@@ -1,17 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import "./WorkNotePage.css";
+import "./styles/WorkNotePage.css";
 import AIAssistant from "./AIThing";
 import SettingsPage from "./SettingsPage";
 import GraphPage from "./GraphPage";
-import settings from "./settings.png";
-import graph from "./graph.png";
-import editing from "./editing.png";
-import savesave from "./saving.png";
-import update from "./update.png";
-import done from "./done.png";
-import newnote from "./new-note.png";
-import ai from "./ai.png";
+import settings from "./pictures/settings.png";
+import graph from "./pictures/graph.png";
+import editing from "./pictures/editing.png";
+import savesave from "./pictures/saving.png";
+import update from "./pictures/update.png";
+import done from "./pictures/done.png";
+import newnote from "./pictures/new-note.png";
+import ai from "./pictures/ai.png";
 
 const API_BASE = "http://localhost:3001";
 
