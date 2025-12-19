@@ -48,7 +48,6 @@ export class GroupService {
     const id = crypto.randomUUID();
     const created = { id, title: t, createdAt: new Date().toISOString() };
 
-    // создать папку notes
     await fs.mkdir(path.join(this.groupsDir, id, "notes"), { recursive: true });
 
     groups.unshift(created);

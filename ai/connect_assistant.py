@@ -53,16 +53,16 @@ class ChatMessage(BaseModel):
 
 class ChatInput(BaseModel):
     messages: List[ChatMessage]
-    temperature: float = 0.7
-    max_tokens: int = 400
+    temperature: float = 0.5
+    max_tokens: int = 1024
 
 
 # ---------- генерация ----------
-def _generate(prompt: str, max_tokens: int = 400, temperature: float = 0.7) -> str:
+def _generate(prompt: str, max_tokens: max_tokens, temperature: float = 0.5) -> str:
     llm = ModelCache.get_llm()
     out = llm(
         prompt,
-        max_tokens=max_tokens,
+        max_tokens=1024,
         temperature=temperature,
     )
     return out["choices"][0]["text"].strip()

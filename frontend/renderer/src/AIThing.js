@@ -22,6 +22,10 @@ async function postJSON(url, body) {
   return data;
 }
 
+function copyMessage(text) {
+  window.api?.copyToClipboard(text);
+}
+
 const AIAssistant = ({ isOpen, onClose }) => {
   const [messages, setMessages] = useState([
     { id: 1, text: "Привет. Я твой ассистент. Могу помочь тебе в работе с текстом. Если тебе нужен анализ текста, то напиши об этом и вставь свой текст. Могу помочь с продолжением текста с помощью наводящих вопросов. Напиши свой текст, а я постараюсь тебе помочь!", sender: "ai" },
@@ -160,9 +164,16 @@ const AIAssistant = ({ isOpen, onClose }) => {
     setInputText("");
     setIsLoading(true);
 
+    const last = messages.slice(-20);
+    const payload = [
+      { role: "system", content: "..." },
+      ...last.map(m => ({ role: m.sender === "user" ? "user" : "assistant", content: m.text })),
+      { role: "user", content: text },
+    ];
+
     try {
       const data = await postJSON(`${API_BASE}/api/ai/chat`, {
-        messages: chatPayloadMessages.concat([{ role: "user", content: text }]),
+        messages: payload,
         temperature: 0.7,
         max_tokens: 400,
       });
@@ -213,19 +224,28 @@ const AIAssistant = ({ isOpen, onClose }) => {
             <strong>Диалог</strong>
           </p>
 
-          <div className="ai-chat-container" ref={chatContainerRef}>
-            {messages.map((m) => (
-              <div key={m.id} className={`ai-message ${m.sender}-message`}>
-                {m.text}
-              </div>
-            ))}
+            <div className="ai-chat-container" ref={chatContainerRef}>
+              {messages.map((m) => (
+                <div key={m.id} className={`ai-message ${m.sender}-message`}>
+                  <div className="ai-message-text">{m.text}</div>
+
+                  {m.sender === "ai" && (
+                    <button
+                      className="copy-btn"
+                      onClick={() => copyMessage(m.text)}
+                      type="button"
+                      title="Скопировать сообщение"
+                    >
+                      ⧉
+                    </button>
+                  )}
+                </div>
+              ))}
 
             {isLoading && (
               <div className="ai-message ai-message">
                 <div className="typing-indicator">
-                  <span></span>
-                  <span></span>
-                  <span></span>
+                  <span></span><span></span><span></span>
                 </div>
               </div>
             )}
