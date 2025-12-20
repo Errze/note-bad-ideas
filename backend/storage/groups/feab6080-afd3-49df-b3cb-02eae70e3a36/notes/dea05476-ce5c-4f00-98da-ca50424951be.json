@@ -1,0 +1,17 @@
+{
+  "id": "dea05476-ce5c-4f00-98da-ca50424951be",
+  "groupId": "feab6080-afd3-49df-b3cb-02eae70e3a36",
+  "title": "some",
+  "content": "# Новая заметка\n\nНачните писать здесь...\nрь\n\n",
+  "type": "markdown",
+  "metadata": {
+    "linkedNotes": [],
+    "isPinned": false,
+    "isArchived": false,
+    "color": "#3b82f6",
+    "wordCount": 7,
+    "readingTime": 1
+  },
+  "createdAt": "2025-12-20T19:04:41.964Z",
+  "updatedAt": "2025-12-20T23:29:30.004Z"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "df4e9ff5-eeda-453d-8f80-6b1ee54254a8",
+  "groupId": "65548076-65e9-4de8-8da5-ee028e05bbfa",
+  "title": "some",
+  "content": "# Новая заметка\n\nНачните писать здесь...\n\n",
+  "type": "markdown",
+  "metadata": {
+    "linkedNotes": [],
+    "isPinned": false,
+    "isArchived": false,
+    "color": "#3b82f6",
+    "wordCount": 6,
+    "readingTime": 1
+  },
+  "createdAt": "2025-12-20T21:07:57.090Z",
+  "updatedAt": "2025-12-20T21:09:07.779Z"
+}

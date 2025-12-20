@@ -1,4 +1,13 @@
 /* ===== Settings Container ===== */
+/* ===== Fullscreen overlay ===== */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5000; /* выше сайдбара/оверлеев */
+  background: rgba(11, 18, 32, 0.98);
+  overflow: hidden; /* контент скроллится внутри .settings-content */
+}
+
 .settings-container {
   height: 100vh;
   display: flex;

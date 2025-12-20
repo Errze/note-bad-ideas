@@ -1,6 +1,26 @@
 const API_BASE = "http://localhost:3001";
 
+async function request(url, options) {
+  const res = await fetch(url, {
+    headers: { "Content-Type": "application/json", ...(options?.headers || {}) },
+    ...options,
+  });
+
+  const text = await res.text();
+  let data = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = null; // сервер мог вернуть HTML/текст, не падаем
+  }
+
+  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+  return data;
+}
+
 const notesApi = {
+  // groups
   getGroups() {
     return request(`${API_BASE}/api/groups`);
   },
@@ -8,23 +28,24 @@ const notesApi = {
   createGroup(title) {
     return request(`${API_BASE}/api/groups`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title }),
     });
   },
 
-  updateGroup: (groupId, patch) =>
-  request(`${API_BASE}/api/groups/${groupId}`, {
-    method: "PATCH",
-    body: JSON.stringify(patch),
-  }),
+  updateGroup(groupId, patch) {
+    return request(`${API_BASE}/api/groups/${groupId}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    });
+  },
 
-  deleteGroup: (groupId) =>
-    request(`${API_BASE}/api/groups/${groupId}`, {
+  deleteGroup(groupId) {
+    return request(`${API_BASE}/api/groups/${groupId}`, {
       method: "DELETE",
-  }),
-  
+    });
+  },
 
+  // notes
   getAllNotes(groupId) {
     return request(`${API_BASE}/api/groups/${groupId}/notes`);
   },
@@ -36,7 +57,6 @@ const notesApi = {
   createNote(groupId, note) {
     return request(`${API_BASE}/api/groups/${groupId}/notes`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(note),
     });
   },
@@ -44,7 +64,6 @@ const notesApi = {
   updateNote(groupId, noteId, updates) {
     return request(`${API_BASE}/api/groups/${groupId}/notes/${noteId}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updates),
     });
   },
@@ -54,20 +73,11 @@ const notesApi = {
       method: "DELETE",
     });
   },
+
+  // graph
+  getGraph(groupId) {
+    return request(`${API_BASE}/api/groups/${groupId}/graph`);
+  },
 };
 
-async function request(url, options) {
-  const res = await fetch(url, {
-    headers: { "Content-Type": "application/json", ...(options?.headers || {}) },
-    ...options,
-  });
-
-  const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
-
-  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
-  return data;
-}
-
 export default notesApi;
-
