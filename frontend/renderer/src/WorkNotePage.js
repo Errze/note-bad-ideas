@@ -114,14 +114,18 @@ function Sidebar({
   }, [files, searchTerm]);
 
   useEffect(() => {
-    const handleClick = () =>
+    const handleMouseDown = (e) => {
+      if (e.button !== 0) return; // только ЛКМ
       setContextMenu({ visible: false, x: 0, y: 0, noteId: null, noteName: "" });
-    document.addEventListener("click", handleClick);
-    return () => document.removeEventListener("click", handleClick);
+    };
+
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => document.removeEventListener("mousedown", handleMouseDown);
   }, []);
 
   const openContextMenu = (e, noteId, noteName) => {
     e.preventDefault();
+    e.stopPropagation();
     setContextMenu({ visible: true, x: e.clientX, y: e.clientY, noteId, noteName });
   };
 
@@ -133,7 +137,13 @@ function Sidebar({
   };
 
   return (
-    <aside className="sidebar">
+    <aside
+      className="sidebar"
+      onContextMenu={(e) => {
+        e.preventDefault(); // нет браузерного меню
+        e.stopPropagation(); // не триггерим глобальное меню
+      }}
+    >
       <div className="search">
         <input
           type="text"
@@ -205,7 +215,14 @@ function Sidebar({
 
       {contextMenu.visible && (
         <div className="context-menu" style={{ top: contextMenu.y, left: contextMenu.x }}>
-          <div className="contex-menu-delete" onClick={() => handleContextMenuAction("delete")}>
+          <div
+            className="contex-menu-delete"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleContextMenuAction("delete");
+            }}
+          >
             Удалить "{contextMenu.noteName}"
           </div>
         </div>
@@ -213,6 +230,7 @@ function Sidebar({
     </aside>
   );
 }
+
 
 // ---------- GroupSelector ----------
 function GroupSelector({ groupId, groups, onGroupChange, onCreateGroup, onOpenManager }) {
@@ -252,7 +270,12 @@ function GroupSelector({ groupId, groups, onGroupChange, onCreateGroup, onOpenMa
         <span style={{ fontWeight: 900, fontSize: 20, lineHeight: 1 }}>+</span>
       </button>
 
-      <button className="icon-button" title="Управление группами" type="button" onClick={onOpenManager}>
+      <button
+        className="icon-button"
+        title="Управление группами"
+        type="button"
+        onClick={onOpenManager}
+      >
         <span style={{ fontWeight: 900, fontSize: 18, lineHeight: 1 }}>⋯</span>
       </button>
 
@@ -428,6 +451,9 @@ function WorkNotePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [noteTitle, setNoteTitle] = useState("Новая заметка");
 
+  // ✅ ДОБАВЛЕНО: ошибка для заголовка (дубликат/пусто)
+  const [titleError, setTitleError] = useState("");
+
   const [groups, setGroups] = useState([]);
   const [currentGroup, setCurrentGroup] = useState("");
 
@@ -449,7 +475,7 @@ function WorkNotePage() {
   const [deletingNote, setDeletingNote] = useState(false);
 
   const busy = saving || deletingGroup || deletingNote;
-  
+
   // --- toast (НЕ alert, не блокирует ввод) ---
   const showToast = (msg) => {
     if (showGraph) return;
@@ -491,6 +517,7 @@ function WorkNotePage() {
       } else {
         setCurrentFile("");
         setNoteTitle("Новая заметка");
+        setTitleError("");
         setText("# Новая заметка\n\nНачните писать здесь...");
         setCurrentNoteId(null);
       }
@@ -507,6 +534,7 @@ function WorkNotePage() {
 
     setCurrentFile(path);
     setNoteTitle(selectedFile.title);
+    setTitleError("");
     setCurrentNoteId(selectedFile.id);
 
     try {
@@ -519,14 +547,19 @@ function WorkNotePage() {
   };
 
   const handleSaveNote = async () => {
-    if (!noteTitle.trim()) return showToast("❌ Заголовок не может быть пустым");
+    const t = noteTitle.trim();
+    if (!t) {
+      setTitleError("Заголовок не может быть пустым");
+      return showToast("❌ Заголовок не может быть пустым");
+    }
     if (!currentGroup) return showToast("❌ Выберите группу");
 
     setSaving(true);
     setSaveMessage("Сохраняем...");
+    setTitleError("");
 
     try {
-      const payload = { title: noteTitle, content: text };
+      const payload = { title: t, content: text };
 
       const saved = currentNoteId
         ? await notesApi.updateNote(currentGroup, currentNoteId, payload)
@@ -541,6 +574,14 @@ function WorkNotePage() {
       setTimeout(() => setIsEditing(false), 350);
     } catch (e) {
       console.error(e);
+
+      // ✅ ДОБАВЛЕНО: обработка дубликата
+      if (e.message === "NOTE_TITLE_DUPLICATE") {
+        setTitleError("Заметка с таким названием уже есть в этой группе");
+        showToast("⚠️ Такое название уже занято");
+        return;
+      }
+
       showToast(`❌ Ошибка: ${e.message}`);
     } finally {
       setSaving(false);
@@ -566,6 +607,7 @@ function WorkNotePage() {
       if (currentNoteId === id) {
         setCurrentFile("");
         setNoteTitle("Новая заметка");
+        setTitleError("");
         setText("# Новая заметка\n\nНачните писать здесь...");
         setCurrentNoteId(null);
       }
@@ -584,6 +626,7 @@ function WorkNotePage() {
     const newTitle = `Новая заметка ${files.length + 1}`;
     setCurrentFile("");
     setNoteTitle(newTitle);
+    setTitleError("");
     setText("# Новая заметка\n\nНачните писать здесь...");
     setCurrentNoteId(null);
     setIsEditing(true);
@@ -657,165 +700,170 @@ function WorkNotePage() {
       setConfirmDeleteGroup(null);
     }
   };
-  
+
   if (showSettings) {
-    return <SettingsPage onBack={() => setShowSettings(false)} />;}
+    return <SettingsPage onBack={() => setShowSettings(false)} />;
+  }
 
   return (
-  <div className="worknote-container">
-    <Sidebar
-      files={files}
-      currentFile={currentFile}
-      onFileSelect={handleFileSelect}
-      onNewNote={handleNewNote}
-      onDeleteNote={handleDeleteNote}
-      onReloadNotes={handleReloadNotes}
-      onSettingsClick={() => setShowSettings(true)}
-      onGraphClick={() => setShowGraph(true)}
-    />
+    <div className="worknote-container">
+      <Sidebar
+        files={files}
+        currentFile={currentFile}
+        onFileSelect={handleFileSelect}
+        onNewNote={handleNewNote}
+        onDeleteNote={handleDeleteNote}
+        onReloadNotes={handleReloadNotes}
+        onSettingsClick={() => setShowSettings(true)}
+        onGraphClick={() => setShowGraph(true)}
+      />
 
-    <div className="main-content">
-      {showGraph ? (
-        <GraphPage notes={files} onClose={() => setShowGraph(false)} />
-      ) : (
-        <>
-          <div className="header">
-            {/* row 1: title + save/edit */}
-            <div className="header-row">
-              <div className="header-left">
-                <input
-                  type="text"
-                  value={noteTitle}
-                  onChange={(e) => setNoteTitle(e.target.value)}
-                  className="title-input"
-                  placeholder="Название заметки"
-                />
-              </div>
-
-              <div className="header-right">
-                <button
-                  onClick={handleSaveNote}
-                  disabled={busy}
-                  className="icon-button primary"
-                  title="Сохранить"
-                  type="button"
-                >
-                  <img src={savesave} alt="save" className="icon-img lg" />
-                </button>
-
-                {!isEditing ? (
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    disabled={busy}
-                    className="icon-button"
-                    title="Редактировать"
-                    type="button"
-                  >
-                    <img src={editing} alt="edit" className="icon-img lg" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setIsEditing(false)}
-                    disabled={busy}
-                    className="icon-button"
-                    title="Готово"
-                    type="button"
-                  >
-                    <img src={done} alt="done" className="icon-img lg" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* row 2: groups + ai + status */}
-            <div className="header-row">
-              <div className="header-left">
-                <GroupSelector
-                  groupId={currentGroup}
-                  groups={groups}
-                  onGroupChange={setCurrentGroup}
-                  onCreateGroup={handleCreateGroup}
-                  onOpenManager={() => setIsGroupManagerOpen(true)}
-                />
-              </div>
-
-              <div className="header-right">
-                {saveMessage && <span className="save-message">{saveMessage}</span>}
-
-                <button
-                  onClick={() => setIsAIAssistantOpen(true)}
-                  className="icon-button"
-                  title="ИИ помощник"
-                  type="button"
-                >
-                  <img src={ai} alt="ai" className="icon-img lg" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {isEditing ? (
-            <div className="editor-container">
-              <div className="sheet">
-                <div className="editor-inner">
-                  <textarea
-                    className="markdown-editor"
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    placeholder="Начните писать свою заметку в формате Markdown..."
+      <div className="main-content">
+        {showGraph ? (
+          <GraphPage notes={files} onClose={() => setShowGraph(false)} />
+        ) : (
+          <>
+            <div className="header">
+              {/* row 1: title + save/edit */}
+              <div className="header-row">
+                <div className="header-left">
+                  <input
+                    type="text"
+                    value={noteTitle}
+                    onChange={(e) => {
+                      setNoteTitle(e.target.value);
+                      if (titleError) setTitleError("");
+                    }}
+                    className={`title-input ${titleError ? "input-error" : ""}`}
+                    placeholder="Название заметки"
                   />
-                  <div className="editor-divider" />
-                  <div className="markdown-preview">
+                  {titleError && <div className="field-error">{titleError}</div>}
+                </div>
+
+                <div className="header-right">
+                  <button
+                    onClick={handleSaveNote}
+                    disabled={busy}
+                    className="icon-button primary"
+                    title="Сохранить"
+                    type="button"
+                  >
+                    <img src={savesave} alt="save" className="icon-img lg" />
+                  </button>
+
+                  {!isEditing ? (
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      disabled={busy}
+                      className="icon-button"
+                      title="Редактировать"
+                      type="button"
+                    >
+                      <img src={editing} alt="edit" className="icon-img lg" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setIsEditing(false)}
+                      disabled={busy}
+                      className="icon-button"
+                      title="Готово"
+                      type="button"
+                    >
+                      <img src={done} alt="done" className="icon-img lg" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* row 2: groups + ai + status */}
+              <div className="header-row">
+                <div className="header-left">
+                  <GroupSelector
+                    groupId={currentGroup}
+                    groups={groups}
+                    onGroupChange={setCurrentGroup}
+                    onCreateGroup={handleCreateGroup}
+                    onOpenManager={() => setIsGroupManagerOpen(true)}
+                  />
+                </div>
+
+                <div className="header-right">
+                  {saveMessage && <span className="save-message">{saveMessage}</span>}
+
+                  <button
+                    onClick={() => setIsAIAssistantOpen(true)}
+                    className="icon-button"
+                    title="ИИ помощник"
+                    type="button"
+                  >
+                    <img src={ai} alt="ai" className="icon-img lg" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {isEditing ? (
+              <div className="editor-container">
+                <div className="sheet">
+                  <div className="editor-inner">
+                    <textarea
+                      className="markdown-editor"
+                      value={text}
+                      onChange={(e) => setText(e.target.value)}
+                      placeholder="Начните писать свою заметку в формате Markdown..."
+                    />
+                    <div className="editor-divider" />
+                    <div className="markdown-preview">
+                      <ReactMarkdown>{text}</ReactMarkdown>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="preview-container">
+                <div className="sheet">
+                  <div className="preview-only">
                     <ReactMarkdown>{text}</ReactMarkdown>
                   </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="preview-container">
-              <div className="sheet">
-                <div className="preview-only">
-                  <ReactMarkdown>{text}</ReactMarkdown>
-                </div>
-              </div>
-            </div>
-          )}
-        </> 
-      )}
+            )}
+          </>
+        )}
 
-      {/* ДОБАВЛЕНО: Модальные окна после условия */}
-      <AIAssistant isOpen={isAIAssistantOpen} onClose={() => setIsAIAssistantOpen(false)} />
+        {/* Модальные окна */}
+        <AIAssistant isOpen={isAIAssistantOpen} onClose={() => setIsAIAssistantOpen(false)} />
 
-      {isGroupManagerOpen && (
-        <GroupManager
-          groups={groups}
-          currentGroup={currentGroup}
-          onRename={handleRenameGroup}
-          onDelete={handleAskDeleteGroup}
-          onClose={() => setIsGroupManagerOpen(false)}
-        />
-      )}
+        {isGroupManagerOpen && (
+          <GroupManager
+            groups={groups}
+            currentGroup={currentGroup}
+            onRename={handleRenameGroup}
+            onDelete={handleAskDeleteGroup}
+            onClose={() => setIsGroupManagerOpen(false)}
+          />
+        )}
 
-      {confirmDeleteGroup && (
-        <ConfirmDeleteGroupModal
-          groupTitle={confirmDeleteGroup.title}
-          onCancel={() => setConfirmDeleteGroup(null)}
-          onConfirm={handleConfirmDeleteGroup}
-          loading={deletingGroup}
-        />
-      )}
+        {confirmDeleteGroup && (
+          <ConfirmDeleteGroupModal
+            groupTitle={confirmDeleteGroup.title}
+            onCancel={() => setConfirmDeleteGroup(null)}
+            onConfirm={handleConfirmDeleteGroup}
+            loading={deletingGroup}
+          />
+        )}
 
-      {confirmDeleteNote && (
-        <ConfirmDeleteNoteModal
-          noteName={confirmDeleteNote.name}
-          onCancel={() => setConfirmDeleteNote(null)}
-          onConfirm={handleConfirmDeleteNote}
-          loading={deletingNote}
-        />
-      )}
+        {confirmDeleteNote && (
+          <ConfirmDeleteNoteModal
+            noteName={confirmDeleteNote.name}
+            onCancel={() => setConfirmDeleteNote(null)}
+            onConfirm={handleConfirmDeleteNote}
+            loading={deletingNote}
+          />
+        )}
+      </div>
     </div>
-  </div> 
-);
+  );
 }
 
 export default WorkNotePage;

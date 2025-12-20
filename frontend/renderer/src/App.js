@@ -8,10 +8,16 @@ function App() {
 
   useEffect(() => {
     function onContextMenu(e) {
-      e.preventDefault();
-
       const target = e.target;
       if (!(target instanceof Element)) return;
+
+      if (target.closest(".sidebar")) {
+        e.preventDefault(); 
+        return;            
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
 
       const noteEl =
         target.closest("textarea") ||
