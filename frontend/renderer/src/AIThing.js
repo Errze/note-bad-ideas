@@ -28,7 +28,7 @@ function copyMessage(text) {
 
 const AIAssistant = ({ isOpen, onClose }) => {
   const [messages, setMessages] = useState([
-    { id: 1, text: "Привет. Я твой ассистент. Могу помочь тебе в работе с текстом. Если тебе нужен анализ текста, то напиши об этом и вставь свой текст. Могу помочь с продолжением текста с помощью наводящих вопросов. Напиши свой текст, а я постараюсь тебе помочь!", sender: "ai" },
+    { id: 1, text: "Привет. Я твой ассистент. Могу помочь тебе в работе с текстом. Если тебе нужен анализ текста, то напиши свой текст в поле ниже и нажми на кнопку. Могу также помочь с продолжением текста с помощью наводящих вопросов. Если просто есть вопросы напиши их и нажми Отправить.", sender: "ai" },
   ]);
 
   const [inputText, setInputText] = useState("");
@@ -128,15 +128,20 @@ const AIAssistant = ({ isOpen, onClose }) => {
     async (action) => {
       if (isLoading) return;
 
-      pushMessage(action, "user");
-      setIsLoading(true);
-
-      try {
-        const text = inputText.trim();
+      const text = inputText.trim(); 
         if (!text) {
-          pushMessage("Вставь текст в поле ввода снизу. Кнопки не умеют читать мысли.", "ai");
+          pushMessage(
+          "Вставь текст в поле ввода снизу. Кнопки не умеют читать мысли.",
+          "ai"
+          );
           return;
         }
+
+    pushMessage(action+': '+text, "user");
+    setInputText("");
+    setIsLoading(true);
+
+      try {
 
         if (action === "Анализ текста") {
           const data = await postJSON(`${API_BASE}/api/ai/analyze`, { text });
@@ -147,6 +152,7 @@ const AIAssistant = ({ isOpen, onClose }) => {
         } else {
           pushMessage(`Неизвестное действие: ${action}`, "ai");
         }
+        setInputText("")
       } catch (e) {
         pushMessage(`Ошибка AI: ${String(e.message || e)}`, "ai");
       } finally {
@@ -251,7 +257,6 @@ const AIAssistant = ({ isOpen, onClose }) => {
             )}
           </div>
 
-
           <div className="ai-input-area">
             <textarea
               className="ai-message-input"
@@ -262,6 +267,19 @@ const AIAssistant = ({ isOpen, onClose }) => {
               disabled={isLoading}
               rows={3}
             />
+            <div className="ai-quick-actions">
+              <button className="ai-action-btn" onClick={() => handleQuickAction("Анализ текста")} disabled={isLoading} type="button">
+                Анализ текста
+              </button>
+              <button
+                className="ai-action-btn"
+                onClick={() => handleQuickAction("Наводящие вопросы")}
+                disabled={isLoading}
+                type="button"
+              >
+                Наводящие вопросы
+              </button>
+            </div>
             <button
               className="ai-send-btn"
               onClick={handleSendMessage}

@@ -2,16 +2,16 @@
   "id": "70eef89b-1546-4dab-81d8-a66a63f750d3",
   "groupId": "65548076-65e9-4de8-8da5-ee028e05bbfa",
   "title": "beggining",
-  "content": "# Новая заметка\n\nНачните писать здесь...\n\n[end](note:a83a796c-ecb3-4fac-8db8-232e22b406bd)\n\n[eend](note:3a7ba275-376f-4375-9fc3-7bf452b2fe2d)",
+  "content": "# Новая заметка\n\nНачните писать здесь...\n\n[end](note:a83a796c-ecb3-4fac-8db8-232e22b406bd)\n\n[eend](note:3a7ba275-376f-4375-9fc3-7bf452b2fe2d)\n[end](note:a83a796c-ecb3-4fac-8db8-232e22b406bd)",
   "type": "markdown",
   "metadata": {
     "linkedNotes": [],
     "isPinned": false,
     "isArchived": false,
     "color": "#3b82f6",
-    "wordCount": 8,
+    "wordCount": 9,
     "readingTime": 1
   },
   "createdAt": "2025-12-20T21:01:15.537Z",
-  "updatedAt": "2025-12-20T23:31:49.916Z"
+  "updatedAt": "2025-12-21T16:23:17.921Z"
 }
