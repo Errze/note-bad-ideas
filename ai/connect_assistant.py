@@ -58,12 +58,13 @@ class ChatInput(BaseModel):
 
 
 # ---------- генерация ----------
-def _generate(prompt: str, max_tokens: max_tokens, temperature: float = 0.5) -> str:
+def _generate(prompt: str, max_tokens: int, temperature: float = 0.5) -> str:
     llm = ModelCache.get_llm()
     out = llm(
         prompt,
         max_tokens=1024,
         temperature=temperature,
+        stop=["user:", "system:","..."]
     )
     return out["choices"][0]["text"].strip()
 
@@ -76,13 +77,13 @@ def quick_analysis(text: str) -> str:
 {text}
 
 Анализ должен содержать только:
-- Основную мысль (50-70 слов)
+- Основную мысль
 - Стиль написания (плюсы и минусы)
 - Предложения по улучшению (структура, развитие идеи)
 
-Ответ:
+assistant:
 """
-    return _generate(prompt, max_tokens=500, temperature=0.9)
+    return _generate(prompt, max_tokens=1024, temperature=0.7)
 
 
 def guiding_questions(text: str) -> str:
@@ -94,25 +95,30 @@ def guiding_questions(text: str) -> str:
 {text}
 
 Ты должен дать 5 вопросов списком.
-Ответ:
+assistant:
 """
-    return _generate(prompt, max_tokens=500, temperature=0.8)
+    return _generate(prompt, max_tokens=1024, temperature=0.7)
 
 
 def chat_reply(messages: List[ChatMessage], max_tokens: int, temperature: float) -> str:
     # Простой chat-шаблон (универсальный). Если у твоей модели есть специальный формат, можно адаптировать.
-    system_default = "Ты - ассистент писателя, который помогает с анализом текста, предложениями по улучшению и может задавать наводящие вопросы для продолжения текста и развития идей."
+    system_default = "Ты - ассистент писателя, который помогает с анализом текста, предложениями по улучшению и может задавать наводящие вопросы для продолжения текста и развития идей. Ты не можешь писать от 'user:' никогда. Отвечай только как assistant. Начинай ответ после 'assistant:'' "
+
+    system_messages = [m for m in messages if m.role == "system"]
+    other_messages = [m for m in messages if m.role != "system"]
+
+    # Ограничиваем память
+    other_messages = other_messages[-3:]
 
     parts = []
-    # гарантируем system
-    has_system = any(m.role == "system" for m in messages)
-    if not has_system:
+
+    if system_messages:
+        parts.append(f"system: {system_messages[-1].content.strip()}")
+    else:
         parts.append(f"system: {system_default}")
 
-    for m in messages:
-        role = m.role
-        content = m.content.strip()
-        parts.append(f"{role}: {content}")
+    for m in other_messages:
+        parts.append(f"{m.role}: {m.content.strip()}")
 
     parts.append("assistant:")
 
