@@ -24,3 +24,4 @@ ai/__pycache__/
 
 # AI Model
 ai/model/*.gguf
+ai/*.exe

@@ -1,6 +1,9 @@
 import { app, BrowserWindow, ipcMain, Menu, clipboard, shell, dialog } from "electron";
 import path from "path";
 import { fileURLToPath } from "url";
+import { spawn } from "child_process";
+import net from "net";
+import fs from "fs";
 
 let mainWindow = null;
 const isDev = !app.isPackaged;
@@ -10,8 +13,117 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 function devLog(...args) {
-  if (isDev) console.log("[MAIN]", ...args);
+  console.log("[MAIN]", ...args);
 }
+
+/* =========================
+   MODEL.EXE AUTOSTART (DEV ONLY)
+========================= */
+
+// Твой путь: frontend/index.js -> .. -> ai/model.exe
+const MODEL_EXE = path.join(__dirname, "..", "ai", "model.exe");
+
+// Если модель реально поднимает сервер на порту, укажи.
+// Если нет (или не уверен) оставь null, иначе будет "model not ready" как у тебя.
+const MODEL_PORT = null; // например 8000, если точно слушает
+const MODEL_HOST = "127.0.0.1";
+const MODEL_WAIT_TIMEOUT_MS = 30000;
+
+let modelProc = null;
+
+function startModelExe() {
+  if (modelProc) {
+    devLog("model.exe already started, pid:", modelProc.pid);
+    return;
+  }
+
+  devLog("Starting model.exe:", MODEL_EXE);
+
+  if (!fs.existsSync(MODEL_EXE)) {
+    console.error("[MAIN] model.exe not found:", MODEL_EXE);
+    return;
+  }
+
+  modelProc = spawn(MODEL_EXE, [], {
+    windowsHide: true,
+    detached: true,
+    stdio: "inherit",
+  });
+
+  devLog("model pid:", modelProc.pid);
+
+  modelProc.on("error", (e) => {
+    console.error("[MAIN] model.exe start error:", e);
+  });
+
+  modelProc.on("exit", (code, signal) => {
+    devLog("model.exe exited:", { code, signal });
+    modelProc = null;
+  });
+
+  // чтобы Electron не ждал этот процесс как дочерний
+  modelProc.unref();
+}
+
+function waitForPort(port, host = "127.0.0.1", timeoutMs = 15000) {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+
+    const tick = () => {
+      const socket = new net.Socket();
+      socket.setTimeout(800);
+
+      const retry = () => {
+        if (Date.now() - start > timeoutMs) {
+          reject(new Error(`Model port ${host}:${port} not ready (timeout ${timeoutMs}ms)`));
+        } else {
+          setTimeout(tick, 400);
+        }
+      };
+
+      socket.once("connect", () => {
+        socket.destroy();
+        resolve();
+      });
+
+      socket.once("timeout", () => {
+        socket.destroy();
+        retry();
+      });
+
+      socket.once("error", () => {
+        socket.destroy();
+        retry();
+      });
+
+      socket.connect(port, host);
+    };
+
+    tick();
+  });
+}
+
+function stopModelExe() {
+  if (!modelProc) return;
+
+  devLog("Stopping model.exe, pid:", modelProc.pid);
+
+  try {
+    // На Windows прибиваем дерево процессов
+    spawn("taskkill", ["/pid", String(modelProc.pid), "/T", "/F"], {
+      windowsHide: true,
+      stdio: "ignore",
+    });
+  } catch (e) {
+    console.error("[MAIN] stopModelExe error:", e);
+  } finally {
+    modelProc = null;
+  }
+}
+
+/* =========================
+   SECURITY HELPERS
+========================= */
 
 function isHttpUrl(url) {
   return typeof url === "string" && (url.startsWith("http://") || url.startsWith("https://"));
@@ -25,6 +137,10 @@ function isInternalNoteUrl(url) {
   return typeof url === "string" && (url.startsWith("note:") || url.startsWith("note-title:"));
 }
 
+/* =========================
+   WINDOW
+========================= */
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 800,
@@ -33,8 +149,6 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
-      // Если у тебя preload на require() и всё работает, можешь оставить sandbox: true.
-      // Но если начнутся "require is not defined" в preload, ставь sandbox: false.
       sandbox: true,
     },
   });
@@ -45,27 +159,22 @@ function createWindow() {
 
   // ---------------- Безопасная навигация ----------------
   mainWindow.webContents.on("will-navigate", (event, url) => {
-    // Разрешаем только навигацию на тот же index.html (редко, но бывает)
-    // Всё остальное либо наружу, либо блок.
     if (isHttpUrl(url)) {
       event.preventDefault();
       shell.openExternal(url);
       return;
     }
 
-    // внутренняя "note:" навигация должна обрабатываться приложением, не браузером
     if (isInternalNoteUrl(url)) {
       event.preventDefault();
       return;
     }
 
-    // file:// переходы режем (в том числе чтобы не прыгать по локальным файлам)
     if (isFileUrl(url)) {
       event.preventDefault();
       return;
     }
 
-    // Всё неизвестное блокируем
     event.preventDefault();
   });
 
@@ -77,35 +186,41 @@ function createWindow() {
     return { action: "deny" };
   });
 
-  // ---------------- Жизненные события ----------------
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
 
-  // ---------------- Диагностика (dev only) ----------------
   if (isDev) {
     mainWindow.webContents.on("did-fail-load", (_e, code, desc, url) => {
       devLog("did-fail-load:", { code, desc, url });
-    });
-
-    mainWindow.webContents.on("render-process-gone", (_e, details) => {
-      devLog("render-process-gone:", details);
-    });
-
-    mainWindow.webContents.on("unresponsive", () => {
-      devLog("window unresponsive");
-    });
-
-    mainWindow.webContents.on("responsive", () => {
-      devLog("window responsive again");
     });
 
     mainWindow.webContents.openDevTools({ mode: "detach" });
   }
 }
 
-app.whenReady().then(() => {
-  devLog("app ready");
+/* =========================
+   APP LIFECYCLE
+========================= */
+
+app.whenReady().then(async () => {
+  devLog("app ready (dev only)");
+
+  // 1) стартуем модель
+  startModelExe();
+
+  // 2) опционально ждём порт
+  if (MODEL_PORT != null) {
+    try {
+      await waitForPort(MODEL_PORT, MODEL_HOST, MODEL_WAIT_TIMEOUT_MS);
+      devLog(`model port ready: ${MODEL_HOST}:${MODEL_PORT}`);
+    } catch (e) {
+      console.error("[MAIN] model not ready:", e);
+      // не блокируем UI, просто логируем
+    }
+  }
+
+  // 3) окно
   createWindow();
 
   app.on("activate", () => {
@@ -113,11 +228,18 @@ app.whenReady().then(() => {
   });
 });
 
+app.on("before-quit", () => {
+  stopModelExe();
+});
+
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
-/* ---------------- IPC ---------------- */
+/* =========================
+   IPC
+========================= */
+
 ipcMain.on("show-context-menu", (event, payload) => {
   const wc = event.sender;
 
