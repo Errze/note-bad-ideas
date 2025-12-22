@@ -44,7 +44,7 @@ const AIAssistant = ({ isOpen, onClose }) => {
     ]);
   }, []);
 
-  // автопрокрутка
+
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
@@ -83,7 +83,7 @@ const AIAssistant = ({ isOpen, onClose }) => {
     onClose?.();
   }, [onClose]);
 
-  // ESC закрывает
+
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === "Escape" && isOpen) {        
@@ -95,7 +95,7 @@ const AIAssistant = ({ isOpen, onClose }) => {
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, closeAssistant]);
 
-  // блокируем скролл страницы только когда панель открыта
+
   useEffect(() => {
     if (!isOpen) {
       document.body.style.overflow = "auto";
