@@ -6,6 +6,7 @@ import groupNotes from "./routes/notes.js";
 import aiRouter from "./routes/ai.js";
 import swaggerUi from "swagger-ui-express";
 import swaggerSpec from "./swagger.js"
+import settingsRoutes from "./routes/settings.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -14,6 +15,8 @@ app.use(cors());
 app.use(express.json({ limit: "2mb" }));
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+app.use("/api/settings", settingsRoutes);
 
 // Логирование запросов
 app.use((req, res, next) => {

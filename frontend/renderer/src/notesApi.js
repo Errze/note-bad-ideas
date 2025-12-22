@@ -74,9 +74,15 @@ const notesApi = {
     });
   },
 
-  // graph
-  getGraph(groupId) {
-    return request(`${API_BASE}/api/groups/${groupId}/graph`);
+  getStoragePath() {
+    return request(`${API_BASE}/api/settings/storage-path`);
+  },
+
+  setStoragePath(storageBasePath) {
+    return request(`${API_BASE}/api/settings/storage-path`, {
+      method: "POST",
+      body: JSON.stringify({ storageBasePath }),
+    });
   },
 };
 

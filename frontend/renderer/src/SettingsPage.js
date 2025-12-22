@@ -35,7 +35,15 @@ async function fetchJson(url, options) {
   return data;
 }
 
-function SettingsPage({ onBack }) {
+/**
+ * Props:
+ * - onBack: () => void
+ * - onStorageChanged?: (newPath: string) => void
+ *
+ * onStorageChanged нужен, чтобы родитель (WorkNotePage) сбросил state и перезагрузил группы/заметки.
+ * Если не передан, делаем window.location.reload() как fallback.
+ */
+function SettingsPage({ onBack, onStorageChanged }) {
   const [storagePath, setStoragePath] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
@@ -59,18 +67,33 @@ function SettingsPage({ onBack }) {
     return () => window.removeEventListener("contextmenu", onCtxCapture, true);
   }, []);
 
+  const notifyStorageChanged = useCallback(
+    (nextPath) => {
+      // 1) если родитель умеет реагировать, пусть реагирует
+      if (typeof onStorageChanged === "function") {
+        try {
+          onStorageChanged(String(nextPath ?? ""));
+          return;
+        } catch {
+          // если вдруг родитель упал, у нас есть дубина
+        }
+      }
+      // 2) fallback: полная перезагрузка, чтобы не показывать старые заметки из памяти
+      window.location.reload();
+    },
+    [onStorageChanged]
+  );
+
   const loadSettings = useCallback(async () => {
     setIsLoading(true);
+    setMessage("");
+
     try {
-      const data = await fetchJson(`${API_BASE}/api/settings`, { method: "GET" });
+      const data = await fetchJson(`${API_BASE}/api/settings/storage-path`, { method: "GET" });
+      const nextPath = String(data?.storageBasePath ?? "");
+      setStoragePath(nextPath);
 
-      const next = {
-        storagePath: String(data?.storagePath ?? ""),
-      };
-
-      setStoragePath(next.storagePath);
-
-      localStorage.setItem(LS_KEY, JSON.stringify(next));
+      localStorage.setItem(LS_KEY, JSON.stringify({ storagePath: nextPath }));
     } catch (e) {
       const cached = safeJsonParse(localStorage.getItem(LS_KEY));
       if (cached && typeof cached === "object") {
@@ -94,59 +117,102 @@ function SettingsPage({ onBack }) {
     setMessage("");
 
     try {
-      const data = await fetchJson(`${API_BASE}/api/choose-directory`, { method: "POST" });
-      if (data?.path) {
-        setStoragePath(String(data.path));
-        showMessage("✅ Директория выбрана успешно", 2500);
-
-        const cached = safeJsonParse(localStorage.getItem(LS_KEY)) || {};
-        localStorage.setItem(
-          LS_KEY,
-          JSON.stringify({
-            storagePath: String(data.path),
-          })
-        );
-      } else {
-        showMessage("⚠️ Сервер не вернул путь", 2500);
+      // 1) выбираем папку через Electron
+      const picked = await window.api?.pickDirectory?.();
+      if (!picked) {
+        showMessage("Отменено", 1500);
+        return;
       }
+
+      // 2) сохраняем путь на сервере
+      const saved = await fetchJson(`${API_BASE}/api/settings/storage-path`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storageBasePath: picked }),
+      });
+
+      const nextPath = String(saved?.storageBasePath ?? picked);
+
+      setStoragePath(nextPath);
+      localStorage.setItem(LS_KEY, JSON.stringify({ storagePath: nextPath }));
+
+      showMessage("✅ Директория выбрана и сохранена", 2000);
+
+      // 3) вот оно: новый storage = новый мир
+      notifyStorageChanged(nextPath);
     } catch (e) {
       showMessage(`✗ Ошибка выбора директории: ${e.message}`, 3000);
     } finally {
       setIsLoading(false);
     }
-  }, [showMessage]);
+  }, [showMessage, notifyStorageChanged]);
 
   const handleSaveSettings = useCallback(async () => {
     setIsLoading(true);
     setMessage("");
 
-    const settings = {
-      storagePath: String(storagePath ?? ""),
-    };
+    const nextPath = String(storagePath ?? "");
 
-    localStorage.setItem(LS_KEY, JSON.stringify(settings));
+    // локально сохраняем всегда
+    localStorage.setItem(LS_KEY, JSON.stringify({ storagePath: nextPath }));
 
     try {
-      await fetchJson(`${API_BASE}/api/settings`, {
+      // серверная ручка ожидает storageBasePath
+      const saved = await fetchJson(`${API_BASE}/api/settings/storage-path`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
+        body: JSON.stringify({ storageBasePath: nextPath }),
       });
 
-      showMessage("✅ Настройки сохранены (сервер + локально)", 2500);
+      const savedPath = String(saved?.storageBasePath ?? nextPath);
+
+      setStoragePath(savedPath);
+      localStorage.setItem(LS_KEY, JSON.stringify({ storagePath: savedPath }));
+
+      showMessage("✅ Настройки сохранены", 1500);
+
+      // если пользователь вручную менял storagePath (когда-нибудь снимешь readOnly),
+      // то тоже применяем смену стора.
+      notifyStorageChanged(savedPath);
     } catch (e) {
-      showMessage("⚠️ Сохранено локально (сервер не поддерживает /api/settings)", 3000);
+      // даже если сервер не сохранил, мы хотя бы не будем врать пользователю
+      showMessage("⚠️ Сохранено локально (сервер недоступен/не поддерживает)", 3000);
     } finally {
       setIsLoading(false);
     }
-  }, [storagePath, showMessage]);
+  }, [storagePath, showMessage, notifyStorageChanged]);
 
-  const handleResetToDefault = useCallback(() => {
-    const defaults = { storagePath: "" };
-    setStoragePath(defaults.storagePath);
-    localStorage.setItem(LS_KEY, JSON.stringify(defaults));
-    showMessage("🔄 Настройки сброшены к значениям по умолчанию", 2500);
-  }, [showMessage]);
+  const handleResetToDefault = useCallback(async () => {
+    setIsLoading(true);
+    setMessage("");
+
+    try {
+      const saved = await fetchJson(`${API_BASE}/api/settings/storage-path`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storageBasePath: "" }),
+      });
+
+      const nextPath = String(saved?.storageBasePath ?? "");
+
+      setStoragePath(nextPath);
+      localStorage.setItem(LS_KEY, JSON.stringify({ storagePath: nextPath }));
+
+      showMessage("🔄 Сброшено к значениям по умолчанию", 2000);
+
+      notifyStorageChanged(nextPath);
+    } catch {
+      // если сервер недоступен, просто локально сбросим
+      setStoragePath("");
+      localStorage.setItem(LS_KEY, JSON.stringify({ storagePath: "" }));
+      showMessage("🔄 Сброшено локально (сервер недоступен)", 2500);
+
+      // локально тоже меняется “мир”, перезагрузим
+      notifyStorageChanged("");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [showMessage, notifyStorageChanged]);
 
   const handleTestConnection = useCallback(async () => {
     setIsLoading(true);
@@ -211,7 +277,7 @@ function SettingsPage({ onBack }) {
                   type="text"
                   value={storagePath}
                   onChange={(e) => setStoragePath(e.target.value)}
-                  placeholder="Выберите или введите путь к директории"
+                  placeholder="Выберите папку для хранения"
                   className="path-input"
                   readOnly
                 />
@@ -226,7 +292,7 @@ function SettingsPage({ onBack }) {
                 </button>
               </div>
               <p className="settings-hint">Директория, где будут храниться все ваши заметки и группы</p>
-            </div>        
+            </div>
           </div>
 
           <div className="settings-section">

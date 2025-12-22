@@ -16,6 +16,7 @@ import ai from "./pictures/ai.png";
 
 import notesApi from "./notesApi";
 
+/* ---------------- mapping ---------------- */
 function mapNoteToFile(note) {
   const id = String(note?.id ?? "");
   const title = String(note?.title ?? "Без названия");
@@ -115,6 +116,7 @@ function scoreCandidate(titleNorm, queryNorm) {
   return 999;
 }
 
+/* ---------------- Sidebar ---------------- */
 function Sidebar({
   files,
   currentNoteId,
@@ -184,21 +186,11 @@ function Sidebar({
           <div className="notes-title">Заметки ({filteredFiles.length})</div>
 
           <div className="note-head-actions">
-            <button
-              className="icon-button"
-              title="Обновить заметки"
-              onClick={onReloadNotes}
-              type="button"
-            >
+            <button className="icon-button" title="Обновить заметки" onClick={onReloadNotes} type="button">
               <img src={update} alt="reload" className="icon-img" />
             </button>
 
-            <button
-              className="icon-button primary"
-              title="Создать новую заметку"
-              onClick={onNewNote}
-              type="button"
-            >
+            <button className="icon-button primary" title="Создать новую заметку" onClick={onNewNote} type="button">
               <img src={newnote} alt="new-note" className="icon-img" />
             </button>
           </div>
@@ -220,21 +212,11 @@ function Sidebar({
       </div>
 
       <div className="button-container">
-        <button
-          className="settings-button"
-          title="Настройки"
-          onClick={() => onSettingsClick?.()}
-          type="button"
-        >
+        <button className="settings-button" title="Настройки" onClick={() => onSettingsClick?.()} type="button">
           <img src={settings} alt="settings" className="low-icon-img" />
         </button>
 
-        <button
-          className="graph-button"
-          title="Граф"
-          onClick={() => onGraphClick?.()}
-          type="button"
-        >
+        <button className="graph-button" title="Граф" onClick={() => onGraphClick?.()} type="button">
           <img src={graph} alt="graph" className="low-icon-img" />
         </button>
       </div>
@@ -257,6 +239,7 @@ function Sidebar({
   );
 }
 
+/* ---------------- Groups UI ---------------- */
 function GroupSelector({ groupId, groups, onGroupChange, onCreateGroup, onOpenManager }) {
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -273,11 +256,7 @@ function GroupSelector({ groupId, groups, onGroupChange, onCreateGroup, onOpenMa
     <div className="group-selector">
       <span>Группа:</span>
 
-      <select
-        value={groupId || ""}
-        onChange={(e) => onGroupChange(e.target.value)}
-        className="group-select"
-      >
+      <select value={groupId || ""} onChange={(e) => onGroupChange(e.target.value)} className="group-select">
         {groups.map((g) => (
           <option key={g.id} value={g.id}>
             {g.title}
@@ -285,12 +264,7 @@ function GroupSelector({ groupId, groups, onGroupChange, onCreateGroup, onOpenMa
         ))}
       </select>
 
-      <button
-        className="icon-button primary"
-        title="Создать группу"
-        type="button"
-        onClick={() => setIsCreating((v) => !v)}
-      >
+      <button className="icon-button primary" title="Создать группу" type="button" onClick={() => setIsCreating((v) => !v)}>
         <span style={{ fontWeight: 900, fontSize: 20, lineHeight: 1 }}>+</span>
       </button>
 
@@ -414,6 +388,7 @@ function GroupManager({ groups, currentGroup, onRename, onDelete, onClose }) {
   );
 }
 
+/* ---------------- Modals ---------------- */
 function ConfirmDeleteGroupModal({ groupTitle, onCancel, onConfirm, loading }) {
   return (
     <div className="modal-backdrop" onMouseDown={onCancel}>
@@ -443,7 +418,9 @@ function ConfirmDeleteNoteModal({ noteName, onCancel, onConfirm, loading }) {
     <div className="modal-backdrop" onMouseDown={onCancel}>
       <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
         <div className="modal-title">Удалить заметку?</div>
-        <div className="modal-text">Заметка <b>{noteName}</b> будет удалена. Без чудес восстановления.</div>
+        <div className="modal-text">
+          Заметка <b>{noteName}</b> будет удалена. Без чудес восстановления.
+        </div>
 
         <div className="modal-actions">
           <button className="modal-btn" type="button" onClick={onCancel} disabled={loading}>
@@ -458,6 +435,9 @@ function ConfirmDeleteNoteModal({ noteName, onCancel, onConfirm, loading }) {
   );
 }
 
+/* =========================
+   WorkNotePage
+========================= */
 function WorkNotePage({ onBack, onOverlayChange }) {
   const [files, setFiles] = useState([]);
   const filesRef = useRef([]);
@@ -692,13 +672,22 @@ function WorkNotePage({ onBack, onOverlayChange }) {
   );
 
   const didInitialSelectRef = useRef(false);
-  const pendingSelectRef = useRef(null); 
-  const pendingOpenRef = useRef(null); 
+  const pendingSelectRef = useRef(null);
+  const pendingOpenRef = useRef(null);
+
+  // защита от гонок: только последний запрос имеет право обновлять UI
+  const requestSeqRef = useRef(0);
 
   const loadNotesForGroup = useCallback(
     async (groupId) => {
+      const seq = ++requestSeqRef.current;
+
       try {
         const notes = await notesApi.getAllNotes(groupId);
+
+        // если за время запроса пришёл новый запрос, этот игнорируем
+        if (seq !== requestSeqRef.current) return;
+
         const mapped = notes.map(mapNoteToFile);
         setFiles(mapped);
 
@@ -728,6 +717,7 @@ function WorkNotePage({ onBack, onOverlayChange }) {
           pendingSelectRef.current = { id: String(mapped[0].id), group: String(groupId) };
         }
       } catch (e) {
+        if (seq !== requestSeqRef.current) return;
         setFiles([]);
         showToast(`❌ Ошибка загрузки заметок: ${e.message}`);
       }
@@ -927,16 +917,42 @@ function WorkNotePage({ onBack, onOverlayChange }) {
 
   const renderedMarkdown = useMemo(() => wikilinksToNoteLinks(text, files), [text, files]);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const gs = await notesApi.getGroups();
-        setGroups(gs);
-        if (gs.length) setCurrentGroup(gs[0].id);
-      } catch (e) {
-        showToast(`❌ Ошибка загрузки групп: ${e.message}`);
+  // загрузка групп
+  const loadGroups = useCallback(async () => {
+    const seq = ++requestSeqRef.current;
+
+    try {
+      const gs = await notesApi.getGroups();
+      if (seq !== requestSeqRef.current) return;
+
+      setGroups(gs);
+
+      // если групп нет, очищаем всё
+      if (!gs.length) {
+        setCurrentGroup("");
+        setFiles([]);
+        setCurrentNoteId(null);
+        setNoteTitle("Новая заметка");
+        setTitleError("");
+        setText("# Новая заметка\n\nНачните писать здесь...");
+        return;
       }
-    })();
+
+      // если текущая группа отсутствует, переключаемся на первую
+      const cur = String(currentGroup || "");
+      const exists = gs.some((g) => String(g.id) === cur);
+      const nextGroup = exists ? cur : String(gs[0].id);
+
+      setCurrentGroup(nextGroup);
+    } catch (e) {
+      if (seq !== requestSeqRef.current) return;
+      showToast(`❌ Ошибка загрузки групп: ${e.message}`);
+    }
+  }, [currentGroup, showToast]);
+
+  useEffect(() => {
+    loadGroups();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -944,6 +960,42 @@ function WorkNotePage({ onBack, onOverlayChange }) {
     loadNotesForGroup(currentGroup);
   }, [currentGroup, loadNotesForGroup]);
 
+  /* --------- ВАЖНО: обработчик смены storage --------- */
+  const handleStorageChanged = useCallback(
+    async (_newPath) => {
+      // сбросить текущие экраны и состояние
+      setShowSettings(false);
+      setShowGraph(false);
+      setIsAIAssistantOpen(false);
+      setIsGroupManagerOpen(false);
+      setConfirmDeleteGroup(null);
+      setConfirmDeleteNote(null);
+
+      didInitialSelectRef.current = false;
+      pendingSelectRef.current = null;
+      pendingOpenRef.current = null;
+
+      // увеличиваем seq, чтобы оборвать все текущие запросы
+      requestSeqRef.current++;
+
+      setGroups([]);
+      setCurrentGroup("");
+      setFiles([]);
+      setCurrentNoteId(null);
+      setIsEditing(false);
+      setTitleError("");
+      setNoteTitle("Новая заметка");
+      setText("# Новая заметка\n\nНачните писать здесь...");
+
+      showToast("📦 Хранилище переключено, обновляю данные...");
+
+      // и грузим заново
+      await loadGroups();
+    },
+    [loadGroups, showToast]
+  );
+
+  /* ---------------- CRUD ---------------- */
   const handleSaveNote = async () => {
     const t = noteTitle.trim();
     if (!t) {
@@ -1121,34 +1173,16 @@ function WorkNotePage({ onBack, onOverlayChange }) {
             </div>
 
             <div className="header-right">
-              <button
-                onClick={handleSaveNote}
-                disabled={busy}
-                className="icon-button primary"
-                title="Сохранить"
-                type="button"
-              >
+              <button onClick={handleSaveNote} disabled={busy} className="icon-button primary" title="Сохранить" type="button">
                 <img src={savesave} alt="save" className="icon-img lg" />
               </button>
 
               {!isEditing ? (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  disabled={busy}
-                  className="icon-button"
-                  title="Редактировать"
-                  type="button"
-                >
+                <button onClick={() => setIsEditing(true)} disabled={busy} className="icon-button" title="Редактировать" type="button">
                   <img src={editing} alt="edit" className="icon-img lg" />
                 </button>
               ) : (
-                <button
-                  onClick={() => setIsEditing(false)}
-                  disabled={busy}
-                  className="icon-button"
-                  title="Готово"
-                  type="button"
-                >
+                <button onClick={() => setIsEditing(false)} disabled={busy} className="icon-button" title="Готово" type="button">
                   <img src={done} alt="done" className="icon-img lg" />
                 </button>
               )}
@@ -1168,12 +1202,7 @@ function WorkNotePage({ onBack, onOverlayChange }) {
 
             <div className="header-right">
               {saveMessage && <span className="save-message">{saveMessage}</span>}
-              <button
-                onClick={openAI}
-                className="icon-button"
-                title="ИИ помощник"
-                type="button"
-              >
+              <button onClick={openAI} className="icon-button" title="ИИ помощник" type="button">
                 <img src={ai} alt="ai" className="icon-img lg" />
               </button>
             </div>
@@ -1198,11 +1227,7 @@ function WorkNotePage({ onBack, onOverlayChange }) {
                       onKeyUp={(e) => {
                         if (
                           wikiOpen &&
-                          (e.key === "ArrowDown" ||
-                            e.key === "ArrowUp" ||
-                            e.key === "Enter" ||
-                            e.key === "Tab" ||
-                            e.key === "Escape")
+                          (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter" || e.key === "Tab" || e.key === "Escape")
                         ) {
                           return;
                         }
@@ -1259,9 +1284,7 @@ function WorkNotePage({ onBack, onOverlayChange }) {
                             }}
                           >
                             {it.title}
-                            <span style={{ opacity: 0.55, marginLeft: 8, fontSize: 12 }}>
-                              #{it.id}
-                            </span>
+                            <span style={{ opacity: 0.55, marginLeft: 8, fontSize: 12 }}>#{it.id}</span>
                           </button>
                         ))}
                       </div>
@@ -1302,11 +1325,7 @@ function WorkNotePage({ onBack, onOverlayChange }) {
           />
         )}
 
-        {showSettings && (
-          <SettingsPage
-            onBack={closeSettings}
-          />
-        )}
+        {showSettings && <SettingsPage onBack={closeSettings} onStorageChanged={handleStorageChanged} />}
 
         <AIAssistant isOpen={isAIAssistantOpen} onClose={closeAI} />
 

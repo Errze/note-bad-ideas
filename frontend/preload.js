@@ -1,4 +1,3 @@
-// preload.js (CommonJS, чтобы Electron не истерил)
 const { contextBridge, ipcRenderer } = require("electron");
 
 function safeError(e) {
@@ -54,4 +53,6 @@ contextBridge.exposeInMainWorld("api", {
 
   copyToClipboard: (text) =>
     ipcRenderer.send("copy-to-clipboard", { text: String(text ?? "") }),
+
+  pickDirectory: () => ipcRenderer.invoke("pick-directory"),
 });

@@ -1,4 +1,3 @@
-// здесь указываются все пути к файлам, директории
 import path from "path";
 import { fileURLToPath } from "url";
 

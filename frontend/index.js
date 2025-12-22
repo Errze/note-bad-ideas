@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, clipboard, shell } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, clipboard, shell, dialog } from "electron";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -33,6 +33,8 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
+      // Если у тебя preload на require() и всё работает, можешь оставить sandbox: true.
+      // Но если начнутся "require is not defined" в preload, ставь sandbox: false.
       sandbox: true,
     },
   });
@@ -43,24 +45,27 @@ function createWindow() {
 
   // ---------------- Безопасная навигация ----------------
   mainWindow.webContents.on("will-navigate", (event, url) => {
-    // Внешние ссылки открываем наружу
+    // Разрешаем только навигацию на тот же index.html (редко, но бывает)
+    // Всё остальное либо наружу, либо блок.
     if (isHttpUrl(url)) {
       event.preventDefault();
       shell.openExternal(url);
       return;
     }
 
+    // внутренняя "note:" навигация должна обрабатываться приложением, не браузером
     if (isInternalNoteUrl(url)) {
       event.preventDefault();
       return;
     }
 
+    // file:// переходы режем (в том числе чтобы не прыгать по локальным файлам)
     if (isFileUrl(url)) {
       event.preventDefault();
       return;
     }
 
-    // Всё неизвестное тоже блокируем
+    // Всё неизвестное блокируем
     event.preventDefault();
   });
 
@@ -69,16 +74,15 @@ function createWindow() {
     if (isHttpUrl(url)) {
       shell.openExternal(url);
     }
-    // note: / file: / всё остальное не открываем окнами
     return { action: "deny" };
   });
 
-  // ---------------- Минимальные жизненные события ----------------
+  // ---------------- Жизненные события ----------------
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
 
-  // ---------------- Минимальные сообщения о проблемах (dev only) ----------------
+  // ---------------- Диагностика (dev only) ----------------
   if (isDev) {
     mainWindow.webContents.on("did-fail-load", (_e, code, desc, url) => {
       devLog("did-fail-load:", { code, desc, url });
@@ -147,4 +151,12 @@ ipcMain.on("show-context-menu", (event, payload) => {
 
 ipcMain.on("copy-to-clipboard", (_event, { text }) => {
   clipboard.writeText(String(text ?? ""));
+});
+
+ipcMain.handle("pick-directory", async () => {
+  const res = await dialog.showOpenDialog({
+    properties: ["openDirectory", "createDirectory"],
+  });
+  if (res.canceled) return null;
+  return res.filePaths?.[0] || null;
 });

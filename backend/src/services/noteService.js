@@ -4,14 +4,33 @@ import crypto from "crypto";
 import { atomicWriteJson } from "./fsAtomic.js";
 import { createNote, updateNote } from "../models/note.js";
 import { extractRawRefs, resolveRefsToNoteIds } from "./linkService.js";
+import { getStorageBasePath } from "./storagePath.js";
 
 export class NoteService {
   constructor(groupService) {
     this.groups = groupService;
   }
 
+  /**
+   * Фолбэк: если groupService по какой-то причине не отдает путь к notes,
+   * строим его сами из выбранного basePath.
+   */
+  _getGroupNotesDirFallback(groupId) {
+    const base = getStorageBasePath();
+    return path.join(base, "groups", String(groupId), "notes");
+  }
+
+  _getGroupNotesDir(groupId) {
+    // ожидаемый путь: groups.getGroupNotesDir(groupId)
+    const d = this.groups?.getGroupNotesDir?.(groupId);
+    if (d && typeof d === "string") return d;
+
+    // если groupService “не в курсе” про basePath
+    return this._getGroupNotesDirFallback(groupId);
+  }
+
   _notePath(groupId, noteId) {
-    return path.join(this.groups.getGroupNotesDir(groupId), `${noteId}.json`);
+    return path.join(this._getGroupNotesDir(groupId), `${noteId}.json`);
   }
 
   _normalizeTitle(title) {
@@ -23,7 +42,7 @@ export class NoteService {
 
   async _ensureUniqueTitle(groupId, title, excludeId = null) {
     const normalized = this._normalizeTitle(title || "Без названия");
-    const dir = this.groups.getGroupNotesDir(groupId);
+    const dir = this._getGroupNotesDir(groupId);
 
     let files = [];
     try {
@@ -42,7 +61,7 @@ export class NoteService {
         const raw = await fs.readFile(p, "utf-8");
         const n = raw ? JSON.parse(raw) : null;
         if (!n?.id) return false;
-        if (excludeId && n.id === excludeId) return false;
+        if (excludeId && String(n.id) === String(excludeId)) return false;
 
         const nt = this._normalizeTitle(n.title || "Без названия");
         return nt === normalized;
@@ -58,7 +77,7 @@ export class NoteService {
 
   async list(groupId) {
     await this.groups.ensureGroupExists(groupId);
-    const dir = this.groups.getGroupNotesDir(groupId);
+    const dir = this._getGroupNotesDir(groupId);
 
     let files = [];
     try {
@@ -96,7 +115,7 @@ export class NoteService {
 
   async _readAllNotes(groupId) {
     await this.groups.ensureGroupExists(groupId);
-    const dir = this.groups.getGroupNotesDir(groupId);
+    const dir = this._getGroupNotesDir(groupId);
 
     let files = [];
     try {
@@ -175,13 +194,17 @@ export class NoteService {
       metadata,
     });
 
+    // гарантируем, что директория под notes существует (на случай смены basePath/пустой папки)
+    const notesDir = this._getGroupNotesDir(groupId);
+    await fs.mkdir(notesDir, { recursive: true });
+
     const p = this._notePath(groupId, id);
     await atomicWriteJson(p, note);
     return note;
   }
 
   async patch(groupId, noteId, patch) {
-    // ВАЖНО: берём сырой note, чтобы outgoingLinks не попали на диск
+    // сырой note, чтобы outgoingLinks не попали на диск
     const existing = await this._getRaw(groupId, noteId);
 
     // если меняют title, проверяем на уникальность
