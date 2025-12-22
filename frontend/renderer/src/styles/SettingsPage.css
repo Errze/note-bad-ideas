@@ -1,11 +1,10 @@
-/* ===== Settings Container ===== */
-/* ===== Fullscreen overlay ===== */
+/*Оверлей*/
 .settings-overlay {
   position: fixed;
   inset: 0;
-  z-index: 5000; /* выше сайдбара/оверлеев */
+  z-index: 5000; 
   background: rgba(11, 18, 32, 0.98);
-  overflow: hidden; /* контент скроллится внутри .settings-content */
+  overflow: hidden; 
 }
 
 .settings-container {
@@ -17,7 +16,7 @@
   overflow: hidden;
 }
 
-/* ===== Header ===== */
+/*Верхняя панель*/
 .settings-header {
   background: linear-gradient(135deg, #033E6B 0%, #0B61A4 100%);
   padding: 16px 20px;
@@ -59,14 +58,12 @@
   color: #ffffff;
 }
 
-/* ===== Content ===== */
 .settings-content {
   flex: 1;
   overflow-y: auto;
   padding: 24px;
 }
 
-/* ===== Message ===== */
 .settings-message {
   padding: 12px 16px;
   border-radius: 12px;
@@ -90,7 +87,6 @@
   color: #f44336;
 }
 
-/* ===== Sections ===== */
 .settings-section {
   background: rgba(255, 255,255, 0.05);
   border-radius: 16px;
@@ -108,7 +104,6 @@
   padding-bottom: 8px;
 }
 
-/* ===== Fields ===== */
 .settings-field {
   margin-bottom: 20px;
 }
@@ -122,7 +117,6 @@
   color: rgba(255, 255, 255, 0.9);
 }
 
-/* Path selector */
 .path-selector {
   display: flex;
   gap: 10px;
@@ -175,50 +169,7 @@
   cursor: not-allowed;
 }
 
-/* Checkbox */
-.settings-checkbox {
-  margin-right: 10px;
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-}
-
-/* Slider */
-.settings-slider {
-  width: 200px;
-  height: 6px;
-  margin: 0 15px;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.1);
-  outline: none;
-}
-
-.settings-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #61dafb;
-  cursor: pointer;
-}
-
-.settings-slider::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #61dafb;
-  cursor: pointer;
-  border: none;
-}
-
-.settings-interval-value {
-  display: inline-block;
-  min-width: 50px;
-  font-weight: 700;
-  color: #61dafb;
-}
-
-/* Buttons */
+/*Кнопки*/
 .settings-test-button,
 .settings-reset-button {
   padding: 12px 20px;
@@ -252,7 +203,6 @@
   cursor: not-allowed;
 }
 
-/* Hint text */
 .settings-hint {
   margin: 8px 0 0 0;
   font-size: 13px;
@@ -260,7 +210,7 @@
   line-height: 1.5;
 }
 
-/* ===== Actions ===== */
+/*Действия*/
 .settings-actions {
   display: flex;
   gap: 15px;
@@ -317,7 +267,6 @@
   cursor: not-allowed;
 }
 
-/* ===== Responsive ===== */
 @media (max-width: 768px) {
   .settings-content {
     padding: 16px;

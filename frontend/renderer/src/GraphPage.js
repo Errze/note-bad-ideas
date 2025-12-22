@@ -1,10 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import "./styles/GraphPage.css";
 
-/* =========================
-   Helpers: normalize + parse links
-========================= */
-
 function normalizeTitleKey(s) {
   return String(s ?? "")
     .trim()
@@ -39,7 +35,6 @@ function stripInlineCode(text) {
 }
 
 function parseLinksFromContent(content) {
-  // { kind: "id", id } | { kind: "title", title }
   const out = [];
   const parts = splitByFencedCode(content);
 
@@ -48,7 +43,6 @@ function parseLinksFromContent(content) {
 
     const text = stripInlineCode(p.value);
 
-    // 1) [[Title]] / [[Title|Alias]]
     const wikiRe = /\[\[([^[\]]+?)\]\]/g;
     let mw;
     while ((mw = wikiRe.exec(text)) !== null) {
@@ -60,7 +54,6 @@ function parseLinksFromContent(content) {
       out.push({ kind: "title", title: targetTitle });
     }
 
-    // 2) [label](href)
     const mdLinkRe = /\[[^\]]*?\]\(([^)]+)\)/g;
     let ml;
     while ((ml = mdLinkRe.exec(text)) !== null) {
@@ -94,10 +87,6 @@ function parseLinksFromContent(content) {
   return out;
 }
 
-/* =========================
-   Layout helpers (tree/radial/force)
-========================= */
-
 function getCanvasCssSize(canvas) {
   const rect = canvas?.getBoundingClientRect?.();
   const w = Math.max(1, Math.round(rect?.width || 1200));
@@ -120,7 +109,6 @@ function pickRoots(nodes, edges) {
 
   let roots = nodes.filter((n) => (indeg.get(n.id) || 0) === 0).map((n) => n.id);
 
-  // Если цикл/всё связно и корней нет: берём "самый ссылочный" как псевдо-корень
   if (roots.length === 0 && nodes.length) {
     const best = [...nodes].sort((a, b) => (outdeg.get(b.id) || 0) - (outdeg.get(a.id) || 0))[0];
     roots = best ? [best.id] : [];
@@ -143,7 +131,6 @@ function buildAdjacency(nodes, edges) {
   return { children, parents };
 }
 
-// Упрощённый tidy-tree: считаем ширину поддерева, потом выдаём x по "ин-ордеру"
 function layoutTree(nodes, edges, w, h) {
   const margin = 90;
   const top = 120;
@@ -155,7 +142,7 @@ function layoutTree(nodes, edges, w, h) {
   const visited = new Set();
 
   function subtreeSize(u) {
-    if (visited.has(u)) return 1; // защита от циклов
+    if (visited.has(u)) return 1; 
     visited.add(u);
 
     const kids = children.get(u) || [];
@@ -166,7 +153,6 @@ function layoutTree(nodes, edges, w, h) {
     return Math.max(1, sum);
   }
 
-  // ширины поддеревьев
   visited.clear();
   const size = new Map(nodes.map((n) => [n.id, 1]));
   for (const r of roots) {
@@ -174,7 +160,6 @@ function layoutTree(nodes, edges, w, h) {
     size.set(r, s);
   }
 
-  // раскладываем: DFS, x идёт слева направо, y по depth
   const pos = new Map();
   const seen = new Set();
   let cursor = 0;
@@ -198,13 +183,11 @@ function layoutTree(nodes, edges, w, h) {
     pos.set(u, { x: mid, y: depth });
   }
 
-  // forest: корни идут слева направо
   for (const r of roots) {
     dfs(r, 0);
-    cursor += 1; // зазор между деревьями
+    cursor += 1; 
   }
 
-  // Оставшиеся (изолированные/цикл) тоже кладём
   for (const n of nodes) {
     if (!pos.has(n.id)) {
       pos.set(n.id, { x: cursor, y: 0 });
@@ -212,7 +195,6 @@ function layoutTree(nodes, edges, w, h) {
     }
   }
 
-  // нормализация X на ширину canvas
   const xs = [...pos.values()].map((p) => p.x);
   const ys = [...pos.values()].map((p) => p.y);
   const minX = Math.min(...xs);
@@ -239,166 +221,12 @@ function layoutTree(nodes, edges, w, h) {
   return out;
 }
 
-function layoutRadial(nodes, edges, w, h) {
-  const margin = 90;
-  const cx = w / 2;
-  const cy = h / 2;
-  const maxR = Math.max(80, Math.min(w, h) / 2 - margin);
-
-  const { roots } = pickRoots(nodes, edges);
-  const { children } = buildAdjacency(nodes, edges);
-
-  // BFS уровни от корней
-  const level = new Map();
-  const q = [];
-  for (const r of roots) {
-    level.set(r, 0);
-    q.push(r);
-  }
-
-  while (q.length) {
-    const u = q.shift();
-    const lu = level.get(u) || 0;
-    const kids = children.get(u) || [];
-    for (const v of kids) {
-      if (!level.has(v)) {
-        level.set(v, lu + 1);
-        q.push(v);
-      }
-    }
-  }
-
-  // несвязанные тоже в 0
-  for (const n of nodes) if (!level.has(n.id)) level.set(n.id, 0);
-
-  const maxL = Math.max(...[...level.values()]);
-  const ringGap = maxL === 0 ? 0 : maxR / (maxL + 1);
-
-  // группируем по уровням
-  const byL = new Map();
-  for (const n of nodes) {
-    const l = level.get(n.id) || 0;
-    if (!byL.has(l)) byL.set(l, []);
-    byL.get(l).push(n.id);
-  }
-
-  const pos = new Map();
-  for (const [l, ids] of byL.entries()) {
-    const r = Math.max(30, ringGap * (l + 1));
-    const k = ids.length;
-
-    for (let i = 0; i < k; i++) {
-      const ang = (i / Math.max(1, k)) * Math.PI * 2;
-      pos.set(ids[i], { x: cx + Math.cos(ang) * r, y: cy + Math.sin(ang) * r });
-    }
-  }
-
-  return pos;
-}
-
-function layoutForce(nodes, edges, w, h, startPos) {
-  const margin = 80;
-
-  const iterations = 140;
-  const repulsion = 1800;
-  const spring = 0.0032;
-  const ideal = 170;
-  const damp = 0.86;
-  const step = 0.022;
-
-  const p = new Map();
-  for (const n of nodes) {
-    const s = startPos?.get(n.id);
-    p.set(n.id, {
-      x: s?.x ?? Math.random() * (w - margin * 2) + margin,
-      y: s?.y ?? Math.random() * (h - margin * 2) + margin,
-    });
-  }
-
-  const vx = new Map(nodes.map((n) => [n.id, 0]));
-  const vy = new Map(nodes.map((n) => [n.id, 0]));
-
-  const nodeList = nodes.map((n) => n.id);
-
-  for (let it = 0; it < iterations; it++) {
-    // repulsion O(N^2)
-    for (let i = 0; i < nodeList.length; i++) {
-      for (let j = i + 1; j < nodeList.length; j++) {
-        const aId = nodeList[i];
-        const bId = nodeList[j];
-        const a = p.get(aId);
-        const b = p.get(bId);
-        if (!a || !b) continue;
-
-        const dx = a.x - b.x;
-        const dy = a.y - b.y;
-        const d2 = dx * dx + dy * dy + 0.01;
-
-        const f = repulsion / d2;
-        const invD = 1 / Math.sqrt(d2);
-        const fx = dx * invD * f;
-        const fy = dy * invD * f;
-
-        vx.set(aId, (vx.get(aId) || 0) + fx);
-        vy.set(aId, (vy.get(aId) || 0) + fy);
-        vx.set(bId, (vx.get(bId) || 0) - fx);
-        vy.set(bId, (vy.get(bId) || 0) - fy);
-      }
-    }
-
-    // springs O(E)
-    for (const e of edges) {
-      const a = p.get(e.source);
-      const b = p.get(e.target);
-      if (!a || !b) continue;
-
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
-      const dist = Math.sqrt(dx * dx + dy * dy) + 0.001;
-      const diff = dist - ideal;
-
-      const f = diff * spring;
-      const fx = (dx / dist) * f;
-      const fy = (dy / dist) * f;
-
-      vx.set(e.source, (vx.get(e.source) || 0) + fx);
-      vy.set(e.source, (vy.get(e.source) || 0) + fy);
-      vx.set(e.target, (vx.get(e.target) || 0) - fx);
-      vy.set(e.target, (vy.get(e.target) || 0) - fy);
-    }
-
-    // integrate + clamp
-    for (const id of nodeList) {
-      const a = p.get(id);
-      if (!a) continue;
-
-      const ax = vx.get(id) || 0;
-      const ay = vy.get(id) || 0;
-
-      a.x += ax * step;
-      a.y += ay * step;
-
-      vx.set(id, ax * damp);
-      vy.set(id, ay * damp);
-
-      a.x = clamp(a.x, margin, w - margin);
-      a.y = clamp(a.y, margin, h - margin);
-    }
-  }
-
-  return p;
-}
-
-/* =========================
-   GraphPage
-========================= */
-
 function GraphPage({ notes, groupId, groupTitle, getNote, onClose, onOpenNote }) {
   const canvasRef = useRef(null);
   const dprRef = useRef(1);
 
   const [selectedNode, setSelectedNode] = useState(null);
-  const [graphType, setGraphType] = useState("force-directed");
+  const [graphType] = useState("tree");
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -406,7 +234,6 @@ function GraphPage({ notes, groupId, groupTitle, getNote, onClose, onOpenNote })
   const [highlightedNode, setHighlightedNode] = useState(null);
   const [canvasTick, setCanvasTick] = useState(0);
 
-  // локальная копия заметок с ДОГРУЖЕННЫМ content
   const [fullNotes, setFullNotes] = useState([]);
 
   useEffect(() => {
@@ -455,7 +282,6 @@ function GraphPage({ notes, groupId, groupTitle, getNote, onClose, onOpenNote })
     };
   }, [notes, groupId, getNote]);
 
-  // Граф: ЧИСТЫЕ данные (без x/y)
   const graphData = useMemo(() => {
     const input = Array.isArray(fullNotes) ? fullNotes : [];
     if (input.length === 0) {
@@ -557,7 +383,6 @@ function GraphPage({ notes, groupId, groupTitle, getNote, onClose, onOpenNote })
     };
   }, [fullNotes]);
 
-  // DPR resize (важно)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -598,10 +423,8 @@ function GraphPage({ notes, groupId, groupTitle, getNote, onClose, onOpenNote })
     };
   }, []);
 
-  // Позиции храним отдельно, не мутируем graphData
   const [positions, setPositions] = useState(() => new Map());
   
-    // гарантируем, что нативный dblclick всегда вызывает актуальный onOpenNote
   const onOpenNoteRef = useRef(onOpenNote);
 
   useEffect(() => {
@@ -609,7 +432,6 @@ function GraphPage({ notes, groupId, groupTitle, getNote, onClose, onOpenNote })
   }, [onOpenNote]);
 
 
-  // Инициализация позиций для новых нод (чтобы не скакали)
   useEffect(() => {
     const canvas = canvasRef.current;
     const { w, h } = getCanvasCssSize(canvas);
@@ -631,7 +453,6 @@ function GraphPage({ notes, groupId, groupTitle, getNote, onClose, onOpenNote })
     });
   }, [graphData.nodes]);
 
-  // Применяем layout при смене типа/структуры
   const applyLayout = useCallback(() => {
     const canvas = canvasRef.current;
     const { w, h } = getCanvasCssSize(canvas);
@@ -639,25 +460,15 @@ function GraphPage({ notes, groupId, groupTitle, getNote, onClose, onOpenNote })
     const nodes = graphData.nodes;
     if (!nodes.length) return;
 
-    let nextPos = null;
-
-    if (graphType === "tree") {
-      nextPos = layoutTree(nodes, graphData.edges, w, h);
-    } else if (graphType === "radial") {
-      nextPos = layoutRadial(nodes, graphData.edges, w, h);
-    } else {
-      nextPos = layoutForce(nodes, graphData.edges, w, h, positions);
-    }
+    const nextPos = layoutTree(nodes, graphData.edges, w, h);
 
     if (nextPos) setPositions(nextPos);
-  }, [graphData.nodes, graphData.edges, graphType, positions]);
+  }, [graphData.nodes, graphData.edges]);
 
   useEffect(() => {
     applyLayout();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [graphType, graphData.nodes.length, graphData.edges.length, canvasTick]);
+  }, [graphData.nodes.length, graphData.edges.length, canvasTick]);
 
-  // Удобный "nodeById" уже с координатами
   const nodeById = useMemo(() => {
     const m = new Map();
     for (const n of graphData.nodes) {
@@ -667,9 +478,7 @@ function GraphPage({ notes, groupId, groupTitle, getNote, onClose, onOpenNote })
     return m;
   }, [graphData.nodes, positions]);
 
-  /* =========================
-     Draw
-========================= */
+  
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -685,7 +494,6 @@ function GraphPage({ notes, groupId, groupTitle, getNote, onClose, onOpenNote })
     ctx.translate(pan.x, pan.y);
     ctx.scale(zoom, zoom);
 
-    // edges
     for (const edge of graphData.edges) {
       const source = nodeById.get(edge.source);
       const target = nodeById.get(edge.target);
@@ -717,7 +525,6 @@ function GraphPage({ notes, groupId, groupTitle, getNote, onClose, onOpenNote })
       ctx.stroke();
     }
 
-    // nodes
     for (const node of graphData.nodes) {
       const withPos = nodeById.get(node.id);
       if (!withPos) continue;
@@ -761,10 +568,6 @@ function GraphPage({ notes, groupId, groupTitle, getNote, onClose, onOpenNote })
     ctx.restore();
   }, [graphData, selectedNode, zoom, pan, highlightedNode, canvasTick, nodeById]);
 
-  /* =========================
-     Mouse + zoom + dblclick + context menu
-========================= */
-
   const pickNodeAt = useCallback(
     (clientX, clientY) => {
       const canvas = canvasRef.current;
@@ -804,7 +607,6 @@ function GraphPage({ notes, groupId, groupTitle, getNote, onClose, onOpenNote })
   );
 
   const handleMouseDown = (e) => {
-    // правая кнопка: игнор (ПКМ отключим отдельно)
     if (e.button === 2) return;
 
     const clicked = pickNodeAt(e.clientX, e.clientY);
@@ -847,7 +649,6 @@ function GraphPage({ notes, groupId, groupTitle, getNote, onClose, onOpenNote })
     setZoom((z) => Math.max(0.1, Math.min(3, z * delta)));
   }, []);
 
-  // Нативный dblclick: открываем именно тот узел, который под курсором
   const handleDblClick = useCallback(
     (e) => {
       const clicked = pickNodeAt(e.clientX, e.clientY);
@@ -864,8 +665,6 @@ function GraphPage({ notes, groupId, groupTitle, getNote, onClose, onOpenNote })
     [pickNodeAt]
   );
 
-
-  // Запрещаем контекстное меню
   const handleContextMenu = useCallback((e) => {
     e.preventDefault();
   }, []);
@@ -908,7 +707,6 @@ function GraphPage({ notes, groupId, groupTitle, getNote, onClose, onOpenNote })
   const selectedNodeInfo = selectedNode ? nodeById.get(selectedNode) : null;
 
   return (
-    // Запрет ПКМ и на весь экран графа (если кликнут мимо canvas)
     <div className="graph-page" onContextMenu={(e) => e.preventDefault()}>
       <div className="graph-header">
         <button className="graph-back-button" onClick={onClose} title="Вернуться к заметкам" type="button">
@@ -932,15 +730,6 @@ function GraphPage({ notes, groupId, groupTitle, getNote, onClose, onOpenNote })
 
       <div className="graph-content">
         <div className="graph-controls">
-          <div className="graph-control-group">
-            <label className="graph-control-label">Тип графа:</label>
-            <select className="graph-select" value={graphType} onChange={(e) => setGraphType(e.target.value)}>
-              <option value="force-directed">Силовое размещение</option>
-              <option value="radial">Радиальный</option>
-              <option value="tree">Древовидный</option>
-            </select>
-          </div>
-
           <div className="graph-control-group">
             <button className="graph-control-button" onClick={handleResetView} title="Сбросить вид" type="button">
               🔄 Сбросить вид
@@ -972,8 +761,6 @@ function GraphPage({ notes, groupId, groupTitle, getNote, onClose, onOpenNote })
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
-              // onWheel убран: wheel навешан нативно passive:false
-              // onDoubleClick убран: dblclick навешан нативно
             />
           </div>
 

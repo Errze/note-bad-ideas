@@ -37,8 +37,6 @@ async function fetchJson(url, options) {
 
 function SettingsPage({ onBack }) {
   const [storagePath, setStoragePath] = useState("");
-  const [autoSave, setAutoSave] = useState(true);
-  const [saveInterval, setSaveInterval] = useState(5);
 
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -52,7 +50,6 @@ function SettingsPage({ onBack }) {
     }
   }, []);
 
-  // ====== ПКМ: гасим системное и наше меню на странице настроек ======
   useEffect(() => {
     const onCtxCapture = (e) => {
       e.preventDefault();
@@ -62,7 +59,6 @@ function SettingsPage({ onBack }) {
     return () => window.removeEventListener("contextmenu", onCtxCapture, true);
   }, []);
 
-  // ====== load settings: API -> localStorage -> defaults ======
   const loadSettings = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -70,28 +66,18 @@ function SettingsPage({ onBack }) {
 
       const next = {
         storagePath: String(data?.storagePath ?? ""),
-        autoSave: data?.autoSave !== undefined ? !!data.autoSave : true,
-        saveInterval: Number.isFinite(Number(data?.saveInterval)) ? Number(data.saveInterval) : 5,
       };
 
       setStoragePath(next.storagePath);
-      setAutoSave(next.autoSave);
-      setSaveInterval(next.saveInterval);
 
       localStorage.setItem(LS_KEY, JSON.stringify(next));
     } catch (e) {
       const cached = safeJsonParse(localStorage.getItem(LS_KEY));
       if (cached && typeof cached === "object") {
         setStoragePath(String(cached.storagePath ?? ""));
-        setAutoSave(cached.autoSave !== undefined ? !!cached.autoSave : true);
-        setSaveInterval(
-          Number.isFinite(Number(cached.saveInterval)) ? Number(cached.saveInterval) : 5
-        );
         showMessage("⚠️ Сервер не отдал настройки, использую локальные", 2200);
       } else {
         setStoragePath("");
-        setAutoSave(true);
-        setSaveInterval(5);
         showMessage("⚠️ Настройки по умолчанию (сервер недоступен)", 2200);
       }
     } finally {
@@ -113,14 +99,11 @@ function SettingsPage({ onBack }) {
         setStoragePath(String(data.path));
         showMessage("✅ Директория выбрана успешно", 2500);
 
-        // обновим локально, чтобы не терялось даже без API /api/settings
         const cached = safeJsonParse(localStorage.getItem(LS_KEY)) || {};
         localStorage.setItem(
           LS_KEY,
           JSON.stringify({
             storagePath: String(data.path),
-            autoSave: cached.autoSave !== undefined ? !!cached.autoSave : autoSave,
-            saveInterval: Number.isFinite(Number(cached.saveInterval)) ? Number(cached.saveInterval) : saveInterval,
           })
         );
       } else {
@@ -131,7 +114,7 @@ function SettingsPage({ onBack }) {
     } finally {
       setIsLoading(false);
     }
-  }, [autoSave, saveInterval, showMessage]);
+  }, [showMessage]);
 
   const handleSaveSettings = useCallback(async () => {
     setIsLoading(true);
@@ -139,11 +122,8 @@ function SettingsPage({ onBack }) {
 
     const settings = {
       storagePath: String(storagePath ?? ""),
-      autoSave: !!autoSave,
-      saveInterval: Math.min(30, Math.max(1, Number(saveInterval) || 5)),
     };
 
-    // всегда сохраняем локально
     localStorage.setItem(LS_KEY, JSON.stringify(settings));
 
     try {
@@ -155,18 +135,15 @@ function SettingsPage({ onBack }) {
 
       showMessage("✅ Настройки сохранены (сервер + локально)", 2500);
     } catch (e) {
-      // /api/settings у тебя 404, так что это ожидаемо
       showMessage("⚠️ Сохранено локально (сервер не поддерживает /api/settings)", 3000);
     } finally {
       setIsLoading(false);
     }
-  }, [storagePath, autoSave, saveInterval, showMessage]);
+  }, [storagePath, showMessage]);
 
   const handleResetToDefault = useCallback(() => {
-    const defaults = { storagePath: "", autoSave: true, saveInterval: 5 };
+    const defaults = { storagePath: "" };
     setStoragePath(defaults.storagePath);
-    setAutoSave(defaults.autoSave);
-    setSaveInterval(defaults.saveInterval);
     localStorage.setItem(LS_KEY, JSON.stringify(defaults));
     showMessage("🔄 Настройки сброшены к значениям по умолчанию", 2500);
   }, [showMessage]);
@@ -249,38 +226,7 @@ function SettingsPage({ onBack }) {
                 </button>
               </div>
               <p className="settings-hint">Директория, где будут храниться все ваши заметки и группы</p>
-            </div>
-
-            <div className="settings-field">
-              <label className="settings-label" style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                <input
-                  type="checkbox"
-                  checked={autoSave}
-                  onChange={(e) => setAutoSave(e.target.checked)}
-                  className="settings-checkbox"
-                  disabled={isLoading}
-                />
-                Автоматическое сохранение
-              </label>
-            </div>
-
-            {autoSave && (
-              <div className="settings-field">
-                <label className="settings-label" style={{ flexDirection: "row", alignItems: "center" }}>
-                  Интервал автосохранения (минуты):
-                  <input
-                    type="range"
-                    min="1"
-                    max="30"
-                    value={saveInterval}
-                    onChange={(e) => setSaveInterval(parseInt(e.target.value, 10))}
-                    className="settings-slider"
-                    disabled={isLoading}
-                  />
-                  <span className="settings-interval-value">{saveInterval} мин</span>
-                </label>
-              </div>
-            )}
+            </div>        
           </div>
 
           <div className="settings-section">

@@ -16,7 +16,6 @@ import ai from "./pictures/ai.png";
 
 import notesApi from "./notesApi";
 
-/* ---------------- mapping ---------------- */
 function mapNoteToFile(note) {
   const id = String(note?.id ?? "");
   const title = String(note?.title ?? "Без названия");
@@ -28,7 +27,6 @@ function mapNoteToFile(note) {
   };
 }
 
-/* ---------------- wikilinks ---------------- */
 function normalizeTitleKey(s) {
   return String(s ?? "").trim().replace(/\s+/g, " ").toLowerCase();
 }
@@ -87,11 +85,9 @@ function wikilinksToNoteLinks(markdown, files) {
 }
 
 function normalizeWikiLinksForSave(markdown, files) {
-  // по факту то же, что и wikilinksToNoteLinks (у тебя так и было)
   return wikilinksToNoteLinks(markdown, files);
 }
 
-/* ---------------- wikilink autocomplete helpers ---------------- */
 function getWikiDraftAtCaret(text, caret) {
   const s = String(text ?? "");
   const pos = Math.max(0, Math.min(s.length, caret ?? s.length));
@@ -119,7 +115,6 @@ function scoreCandidate(titleNorm, queryNorm) {
   return 999;
 }
 
-/* ---------------- Sidebar ---------------- */
 function Sidebar({
   files,
   currentNoteId,
@@ -171,7 +166,6 @@ function Sidebar({
     <aside
       className="sidebar"
       onContextMenu={(e) => {
-        // sidebar: НЕТ системного меню и НЕТ нашего меню
         e.preventDefault();
         e.stopPropagation();
       }}
@@ -263,7 +257,6 @@ function Sidebar({
   );
 }
 
-/* ---------------- GroupSelector ---------------- */
 function GroupSelector({ groupId, groups, onGroupChange, onCreateGroup, onOpenManager }) {
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -330,7 +323,6 @@ function GroupSelector({ groupId, groups, onGroupChange, onCreateGroup, onOpenMa
   );
 }
 
-/* ---------------- GroupManager ---------------- */
 function GroupManager({ groups, currentGroup, onRename, onDelete, onClose }) {
   const [editId, setEditId] = useState(null);
   const [value, setValue] = useState("");
@@ -422,7 +414,6 @@ function GroupManager({ groups, currentGroup, onRename, onDelete, onClose }) {
   );
 }
 
-/* ---------------- Confirm modals ---------------- */
 function ConfirmDeleteGroupModal({ groupTitle, onCancel, onConfirm, loading }) {
   return (
     <div className="modal-backdrop" onMouseDown={onCancel}>
@@ -467,7 +458,6 @@ function ConfirmDeleteNoteModal({ noteName, onCancel, onConfirm, loading }) {
   );
 }
 
-/* ---------------- WorkNotePage ---------------- */
 function WorkNotePage({ onBack, onOverlayChange }) {
   const [files, setFiles] = useState([]);
   const filesRef = useRef([]);
@@ -506,7 +496,6 @@ function WorkNotePage({ onBack, onOverlayChange }) {
 
   const busy = saving || deletingGroup || deletingNote;
 
-  // ===== overlay state sync (важное) =====
   const openGraph = useCallback(() => {
     setShowGraph(true);
     onOverlayChange?.({ graph: true });
@@ -537,7 +526,6 @@ function WorkNotePage({ onBack, onOverlayChange }) {
     onOverlayChange?.({ ai: false });
   }, [onOverlayChange]);
 
-  // если WorkNotePage размонтируется, прибьем флаги оверлеев в App (чтобы не залипало)
   useEffect(() => {
     return () => {
       onOverlayChange?.({ graph: false, settings: false, ai: false });
@@ -547,7 +535,6 @@ function WorkNotePage({ onBack, onOverlayChange }) {
   const toastTimerRef = useRef(null);
   const showToast = useCallback(
     (msg) => {
-      // когда открыт граф, ты сам просил "не мешать"
       if (showGraph) return;
       setSaveMessage(msg);
       if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
@@ -556,7 +543,6 @@ function WorkNotePage({ onBack, onOverlayChange }) {
     [showGraph]
   );
 
-  /* --- editor refs & autocomplete state --- */
   const textareaRef = useRef(null);
 
   const [wikiOpen, setWikiOpen] = useState(false);
@@ -644,7 +630,6 @@ function WorkNotePage({ onBack, onOverlayChange }) {
       try {
         el.setSelectionRange(newPos, newPos);
       } catch {
-        // ignore
       }
     }, 0);
   }, []);
@@ -683,7 +668,6 @@ function WorkNotePage({ onBack, onOverlayChange }) {
     [wikiOpen, wikiItems, wikiIndex, insertWikiCandidate]
   );
 
-  /* --- navigation --- */
   const handleFileSelect = useCallback(
     async (noteIdSel, listArg, groupIdArg) => {
       const list = Array.isArray(listArg) ? listArg : filesRef.current;
@@ -707,10 +691,9 @@ function WorkNotePage({ onBack, onOverlayChange }) {
     [currentGroup]
   );
 
-  // --- anti-jump machinery ---
   const didInitialSelectRef = useRef(false);
-  const pendingSelectRef = useRef(null); // { id, group }
-  const pendingOpenRef = useRef(null); // { id, group }
+  const pendingSelectRef = useRef(null); 
+  const pendingOpenRef = useRef(null); 
 
   const loadNotesForGroup = useCallback(
     async (groupId) => {
@@ -785,7 +768,7 @@ function WorkNotePage({ onBack, onOverlayChange }) {
       const existing = currentFiles.find((f) => String(f.id) === wanted);
       if (existing) {
         await handleFileSelect(existing.id, currentFiles, currentGroup);
-        closeGraph(); // закрываем граф, если открыли заметку
+        closeGraph();
         pendingOpenRef.current = null;
         return;
       }
@@ -802,7 +785,6 @@ function WorkNotePage({ onBack, onOverlayChange }) {
           return;
         }
       } catch {
-        // ignore
       }
 
       try {
@@ -945,7 +927,6 @@ function WorkNotePage({ onBack, onOverlayChange }) {
 
   const renderedMarkdown = useMemo(() => wikilinksToNoteLinks(text, files), [text, files]);
 
-  /* --- initial load --- */
   useEffect(() => {
     (async () => {
       try {
@@ -956,7 +937,6 @@ function WorkNotePage({ onBack, onOverlayChange }) {
         showToast(`❌ Ошибка загрузки групп: ${e.message}`);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -964,7 +944,6 @@ function WorkNotePage({ onBack, onOverlayChange }) {
     loadNotesForGroup(currentGroup);
   }, [currentGroup, loadNotesForGroup]);
 
-  /* --- save/delete/create --- */
   const handleSaveNote = async () => {
     const t = noteTitle.trim();
     if (!t) {
@@ -1125,7 +1104,6 @@ function WorkNotePage({ onBack, onOverlayChange }) {
       />
 
       <div className="main-content">
-        {/* header + editor/preview под графом/настройками не рендерим, но WorkNotePage не размонтируем */}
         <div className="header">
           <div className="header-row">
             <div className="header-left">
@@ -1202,7 +1180,6 @@ function WorkNotePage({ onBack, onOverlayChange }) {
           </div>
         </div>
 
-        {/* Редактор / превью */}
         {!showGraph && !showSettings ? (
           <>
             {isEditing ? (
@@ -1314,7 +1291,6 @@ function WorkNotePage({ onBack, onOverlayChange }) {
           </>
         ) : null}
 
-        {/* ===== Overlays (Graph/Settings) ===== */}
         {showGraph && (
           <GraphPage
             notes={files}
@@ -1332,7 +1308,6 @@ function WorkNotePage({ onBack, onOverlayChange }) {
           />
         )}
 
-        {/* ===== AI assistant overlay ===== */}
         <AIAssistant isOpen={isAIAssistantOpen} onClose={closeAI} />
 
         {isGroupManagerOpen && (
